@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
+import 'package:frontend/pages/sign_up_page.dart';
+import 'package:frontend/pages/home_page.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class SignInController extends GetxController {
   var obscureText = true.obs;
@@ -52,6 +55,7 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: primaryColor,
       body: Stack(
         children: [
@@ -65,7 +69,7 @@ class _SignInPageState extends State<SignInPage> {
                   'Hello!',
                   style: GoogleFonts.poppins(
                     fontSize: 50,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: medium,
                     color: whiteColor,
                   ),
                 ),
@@ -73,7 +77,7 @@ class _SignInPageState extends State<SignInPage> {
                   'Welcome to SehatSaja',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: medium,
                     color: whiteColor,
                   ),
                 ),
@@ -116,9 +120,13 @@ class _SignInPageState extends State<SignInPage> {
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: whiteColor,
-                          hintText: 'Enter Your E-mail',
+                          hintText: 'E-mail',
                           hintStyle: TextStyle(color: secondaryColor),
-                          prefixIcon: Icon(Icons.email, color: primaryColor),
+                          prefixIcon: PhosphorIcon(
+                            PhosphorIconsBold.envelopeSimple,
+                            color: secondaryColor,
+                            size: 25.0,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(40.0),
                             borderSide: BorderSide.none,
@@ -133,9 +141,13 @@ class _SignInPageState extends State<SignInPage> {
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: whiteColor,
-                            hintText: 'Enter Your password',
+                            hintText: 'Password',
                             hintStyle: TextStyle(color: secondaryColor),
-                            prefixIcon: Icon(Icons.lock, color: primaryColor),
+                            prefixIcon: PhosphorIcon(
+                              PhosphorIconsBold.lockSimple,
+                              color: secondaryColor,
+                              size: 25.0,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(40.0),
                               borderSide: BorderSide.none,
@@ -173,7 +185,9 @@ class _SignInPageState extends State<SignInPage> {
                         height: 50,
                         child: ElevatedButton(
                           onPressed: () {
-                            if (_formKey.currentState!.validate()) {}
+                            if (_formKey.currentState!.validate()) {
+                              Get.to(() => HomePage());
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
@@ -195,29 +209,21 @@ class _SignInPageState extends State<SignInPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: Divider(
-                              color: secondaryColor, // Customize the color
-                              thickness: 1, // Adjust the thickness of the line
-                            ),
+                            child: Divider(color: secondaryColor, thickness: 1),
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
                               "Or login with",
                               style: TextStyle(
-                                color:
-                                    secondaryColor, // Match the text color with the line
-                                fontSize: 16, // Adjust the font size
-                                fontWeight: medium, // Make it semi-bold
+                                color: secondaryColor,
+                                fontSize: 16,
+                                fontWeight: medium,
                               ),
                             ),
                           ),
                           Expanded(
-                            child: Divider(
-                              color:
-                                  secondaryColor, // Same color as the other side
-                              thickness: 1,
-                            ),
+                            child: Divider(color: secondaryColor, thickness: 1),
                           ),
                         ],
                       ),
@@ -244,7 +250,7 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 30),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -257,7 +263,9 @@ class _SignInPageState extends State<SignInPage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Get.to(() => SignUpPage());
+                            },
                             child: Text(
                               "Sign Up",
                               style: GoogleFonts.plusJakartaSans(
@@ -276,7 +284,7 @@ class _SignInPageState extends State<SignInPage> {
             ),
           ),
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.13,
+            top: MediaQuery.of(context).size.height * 0.08,
             left: MediaQuery.of(context).size.width * 0.60,
             child: ClipRRect(
               child: Image.asset(
