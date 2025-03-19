@@ -26,7 +26,7 @@ class _SplashPageState extends State<SplashPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryColor,
-      body: SingleChildScrollView(
+      body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

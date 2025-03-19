@@ -6,6 +6,7 @@ Color lightGreyColor = const Color(0xFFF4F4F4);
 Color blackColor = const Color(0xFF000000);
 Color whiteColor = const Color(0xFFFFFFFF);
 Color primaryColor = const Color(0xFF4993FA);
+Color femaleColor = const Color(0xFFFFD0D0);
 
 FontWeight light = FontWeight.w300;
 FontWeight regular = FontWeight.w400;
