@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:get/get.dart';
+import 'package:frontend/pages/medicine_pick_page.dart';
+import 'package:frontend/pages/home_page.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -22,7 +25,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
-            onPressed: () => onItemTapped(0),
+            onPressed: () {
+              onItemTapped(0);
+              Get.to(() => HomePage());
+            },
             icon: SvgPicture.asset(
               'assets/home_navbar.svg',
               height: 30,
@@ -31,7 +37,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () => onItemTapped(1),
+            onPressed: () {
+              onItemTapped(1);
+              Get.to(() => MedicinePickPage());
+            },
             icon: SvgPicture.asset(
               'assets/pill_navbar.svg',
               height: 30,

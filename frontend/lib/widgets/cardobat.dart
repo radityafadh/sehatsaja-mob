@@ -37,7 +37,7 @@ class Cardobat extends StatelessWidget {
         ),
       ),
       child: Container(
-        width: 300.0,
+        width: double.infinity,
         height: 150.0,
         padding: EdgeInsets.all(8.0),
         child: Row(
