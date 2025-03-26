@@ -7,6 +7,7 @@ import 'package:frontend/widgets/cardobat.dart';
 import 'package:frontend/widgets/navbar.dart';
 import 'package:frontend/widgets/cardnews.dart';
 import 'package:get/get.dart';
+import 'package:frontend/pages/medicine_pick_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -24,6 +25,8 @@ class _HomePageState extends State<HomePage> {
       selectedIndex = index;
     });
   }
+
+  List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +265,9 @@ class _HomePageState extends State<HomePage> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(() => MedicinePickPage());
+                },
               ),
             ],
           ),
@@ -280,16 +285,6 @@ class _HomePageState extends State<HomePage> {
                 scrollDirection: Axis.horizontal,
                 itemCount: 7,
                 itemBuilder: (context, index) {
-                  List<String> days = [
-                    "Mon",
-                    "Tue",
-                    "Wed",
-                    "Thu",
-                    "Fri",
-                    "Sat",
-                    "Sun",
-                  ];
-
                   return GestureDetector(
                     onTap: () => onItemTapped(index),
                     child: Padding(

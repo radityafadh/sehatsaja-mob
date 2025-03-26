@@ -39,6 +39,7 @@ dependencies:
   get: ^4.6.5
   phosphor_flutter: ^2.1.0
   flutter_svg: ^2.0.9
+  table_calendar: ^3.2.0
 
 
 dev_dependencies:
@@ -67,9 +68,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    # - assets/logo_green.png
-    # - assets/logo_white.png
+    - assets/shape/
     - assets/
+    
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
