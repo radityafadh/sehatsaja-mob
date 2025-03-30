@@ -8,6 +8,9 @@ import 'package:frontend/pages/home_page.dart';
 import 'package:frontend/pages/medicine_detail_page.dart';
 import 'package:frontend/pages/news_detail_page.dart';
 import 'package:frontend/pages/medicine_add_page.dart';
+import 'package:frontend/pages/pick_doctor_page.dart';
+import 'package:frontend/pages/detail_doctor_page.dart';
+import 'package:frontend/pages/setting_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,6 +34,9 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/pick-medicine', page: () => MedicinePickPage()),
         GetPage(name: '/add-medicine', page: () => MedicineAddPage()),
         GetPage(name: '/detail-news', page: () => NewsDetailPage()),
+        GetPage(name: '/pick-doctor', page: () => PickDoctorPage()),
+        GetPage(name: '/detail-doctor', page: () => DetailDoctorPage()),
+        GetPage(name: '/setting', page: () => SettingPage()),
       ],
     );
   }

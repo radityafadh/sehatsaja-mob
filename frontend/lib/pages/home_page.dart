@@ -8,6 +8,7 @@ import 'package:frontend/widgets/navbar.dart';
 import 'package:frontend/widgets/cardnews.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/medicine_pick_page.dart';
+import 'package:frontend/pages/setting_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -61,57 +62,58 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-              Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    decoration: BoxDecoration(
-                      color: whiteColor,
-                      borderRadius: BorderRadius.circular(25.0),
-                    ),
-                    height: 60.0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Stack(
-                          children: [
-                            PhosphorIcon(
-                              PhosphorIconsBold.bell,
-                              color: blackColor,
-                              size: 25.0,
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: whiteColor,
+                  borderRadius: BorderRadius.circular(25.0),
+                ),
+                height: 60.0,
+                child: GestureDetector(
+                  onTap: () {
+                    Get.to(SettingPage());
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Stack(
+                        children: [
+                          PhosphorIcon(
+                            PhosphorIconsBold.bell,
+                            color: blackColor,
+                            size: 25.0,
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(width: 16.0),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(50),
-                          child: Image.asset(
-                            'assets/profile.png',
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.cover,
                           ),
+                        ],
+                      ),
+                      const SizedBox(width: 16.0),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(50),
+                        child: Image.asset(
+                          'assets/profile.png',
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ],
           ),
