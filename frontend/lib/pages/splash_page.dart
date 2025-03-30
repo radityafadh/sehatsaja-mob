@@ -16,9 +16,8 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-
     Timer(const Duration(seconds: 3), () {
-      Get.to(() => SignInPage());
+      Get.to(() => const SignInPage());
     });
   }
 
@@ -26,30 +25,36 @@ class _SplashPageState extends State<SplashPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryColor,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 148,
-              height: 144,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/logo_pill.png'),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          double imageSize = constraints.maxWidth * 0.4;
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: imageSize,
+                  height: imageSize * 0.97,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/logo_pill.png'),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(height: constraints.maxHeight * 0.02),
+                Text(
+                  'SehatSaja',
+                  style: GoogleFonts.poppins(
+                    fontSize: constraints.maxWidth * 0.08,
+                    fontWeight: bold,
+                    color: whiteColor,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'SehatSaja',
-              style: GoogleFonts.poppins(
-                fontSize: 30,
-                fontWeight: bold,
-                color: whiteColor,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

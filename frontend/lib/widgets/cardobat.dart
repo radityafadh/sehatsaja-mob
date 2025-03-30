@@ -7,8 +7,7 @@ class Cardobat extends StatelessWidget {
   final String name;
   final String shape;
   final String dose;
-  final String
-  detailPageRoute; // Menambahkan parameter untuk route halaman detail
+  final String detailPageRoute;
 
   const Cardobat({
     Key? key,
@@ -16,7 +15,7 @@ class Cardobat extends StatelessWidget {
     required this.name,
     required this.shape,
     required this.dose,
-    required this.detailPageRoute, // Menambahkan parameter ini
+    required this.detailPageRoute,
   }) : super(key: key);
 
   @override
@@ -25,7 +24,6 @@ class Cardobat extends StatelessWidget {
 
     return TextButton(
       onPressed: () {
-        // Menggunakan Get untuk pindah halaman
         Get.toNamed(detailPageRoute);
       },
       style: TextButton.styleFrom(
