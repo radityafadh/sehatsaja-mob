@@ -11,6 +11,8 @@ import 'package:frontend/pages/medicine_add_page.dart';
 import 'package:frontend/pages/pick_doctor_page.dart';
 import 'package:frontend/pages/detail_doctor_page.dart';
 import 'package:frontend/pages/setting_page.dart';
+import 'package:frontend/pages/article_history_page.dart';
+import 'package:frontend/pages/transaction_history_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -37,6 +39,11 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/pick-doctor', page: () => PickDoctorPage()),
         GetPage(name: '/detail-doctor', page: () => DetailDoctorPage()),
         GetPage(name: '/setting', page: () => SettingPage()),
+        GetPage(name: '/article-history', page: () => ArticleHistoryPage()),
+        GetPage(
+          name: '/transaction-history',
+          page: () => TransactionHistoryPage(),
+        ),
       ],
     );
   }
