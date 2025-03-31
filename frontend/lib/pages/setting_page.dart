@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:frontend/pages/article_history_page.dart';
+import 'package:get/get.dart';
+import 'package:frontend/pages/transaction_history_page.dart';
 
 class SettingPage extends StatelessWidget {
   const SettingPage({super.key});
@@ -82,80 +85,90 @@ class SettingPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.clock,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'History',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: medium,
-                        color: blackColor,
+            GestureDetector(
+              onTap: () {
+                Get.to(ArticleHistoryPage());
+              },
+              child: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIconsBold.clock,
+                    color: blackColor,
+                    size: 25.0,
+                  ),
+                  const SizedBox(width: 10.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'History',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: medium,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Article Read',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: regular,
-                        color: blackColor,
+                      Text(
+                        'Article Read',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: regular,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
+                    ],
+                  ),
+                  const Spacer(),
+                  PhosphorIcon(
+                    PhosphorIconsBold.arrowRight,
+                    color: primaryColor,
+                    size: 25.0,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.money,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'History',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: medium,
-                        color: blackColor,
+            GestureDetector(
+              onTap: () {
+                Get.to(TransactionHistoryPage());
+              },
+              child: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIconsBold.money,
+                    color: blackColor,
+                    size: 25.0,
+                  ),
+                  const SizedBox(width: 10.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'History',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: medium,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Transaction',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: regular,
-                        color: blackColor,
+                      Text(
+                        'Transaction',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: regular,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
+                    ],
+                  ),
+                  const Spacer(),
+                  PhosphorIcon(
+                    PhosphorIconsBold.arrowRight,
+                    color: primaryColor,
+                    size: 25.0,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 40.0),
             Text(
@@ -183,7 +196,6 @@ class SettingPage extends StatelessWidget {
                     color: blackColor,
                   ),
                 ),
-
                 const Spacer(),
                 PhosphorIcon(
                   PhosphorIconsBold.arrowRight,
@@ -221,13 +233,13 @@ class SettingPage extends StatelessWidget {
             Row(
               children: [
                 PhosphorIcon(
-                  PhosphorIconsBold.question,
+                  PhosphorIconsBold.questionMark,
                   color: blackColor,
                   size: 25.0,
                 ),
                 const SizedBox(width: 10.0),
                 Text(
-                  'Help',
+                  'Help and Support',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: medium,
