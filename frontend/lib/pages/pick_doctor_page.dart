@@ -85,7 +85,7 @@ class _PickDoctorPageState extends State<PickDoctorPage> {
                     name: doctors[index]['name']!,
                     role: doctors[index]['role']!,
                     image: doctors[index]['image']!,
-                    detailPageRoute: '/detail-doctor',
+                    detailPageRoute: '/detail-transaction',
                   );
                 },
               ),

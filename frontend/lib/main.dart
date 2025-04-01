@@ -13,6 +13,7 @@ import 'package:frontend/pages/detail_doctor_page.dart';
 import 'package:frontend/pages/setting_page.dart';
 import 'package:frontend/pages/article_history_page.dart';
 import 'package:frontend/pages/transaction_history_page.dart';
+import 'package:frontend/pages/detail_payment_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,6 +45,7 @@ class MyApp extends StatelessWidget {
           name: '/transaction-history',
           page: () => TransactionHistoryPage(),
         ),
+        GetPage(name: '/detail-transaction', page: () => DetailPaymentPage()),
       ],
     );
   }

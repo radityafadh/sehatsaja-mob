@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
+import 'package:frontend/widgets/containerdetail.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class DetailDoctorPage extends StatelessWidget {
   const DetailDoctorPage({Key? key}) : super(key: key);
@@ -65,13 +67,34 @@ class DetailDoctorPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20.0),
-              Text(
-                'About Me',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: bold,
-                  color: blackColor,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Transform.scale(
+                    scale: 0.8, // Reduce size to 80% of original
+                    child: ContainerDetail(
+                      icon: PhosphorIconsBold.person,
+                      name: '152+',
+                      detail: 'Patients',
+                    ),
+                  ),
+                  Transform.scale(
+                    scale: 0.8,
+                    child: ContainerDetail(
+                      icon: PhosphorIconsBold.medal,
+                      name: '3 Yr+',
+                      detail: 'Experience',
+                    ),
+                  ),
+                  Transform.scale(
+                    scale: 0.8,
+                    child: ContainerDetail(
+                      icon: PhosphorIconsBold.star,
+                      name: '4.9',
+                      detail: 'Rating',
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
