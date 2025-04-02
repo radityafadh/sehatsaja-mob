@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
+import 'package:frontend/pages/payment_method.dart';
+import 'package:frontend/pages/detail_payment_page_2.dart';
 
 class DetailPaymentPage extends StatelessWidget {
   const DetailPaymentPage({Key? key}) : super(key: key);
@@ -181,7 +183,9 @@ class DetailPaymentPage extends StatelessWidget {
                     size: 30,
                     color: primaryColor,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    Get.to(() => PaymentMethodPage());
+                  },
                 ),
               ],
             ),
@@ -213,7 +217,9 @@ class DetailPaymentPage extends StatelessWidget {
             SizedBox(
               width: double.infinity, // Membuat tombol selebar layar
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(() => DetailPaymentPage2());
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(
