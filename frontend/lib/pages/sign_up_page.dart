@@ -5,9 +5,15 @@ import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class SignUpController extends GetxController {
-  var obscureText = true.obs;
-  void togglePasswordVisibility() {
-    obscureText.value = !obscureText.value;
+  var obscureText1 = true.obs;
+  var obscureText2 = true.obs;
+
+  void togglePasswordVisibility1() {
+    obscureText1.value = !obscureText1.value;
+  }
+
+  void togglePasswordVisibility2() {
+    obscureText2.value = !obscureText2.value;
   }
 }
 
@@ -176,7 +182,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       Obx(
                         () => TextFormField(
                           controller: passwordController,
-                          obscureText: controller.obscureText.value,
+                          obscureText: controller.obscureText1.value,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: whiteColor,
@@ -189,12 +195,12 @@ class _SignUpPageState extends State<SignUpPage> {
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                controller.obscureText.value
+                                controller.obscureText1.value
                                     ? Icons.visibility_off
                                     : Icons.visibility,
                                 color: secondaryColor,
                               ),
-                              onPressed: controller.togglePasswordVisibility,
+                              onPressed: controller.togglePasswordVisibility1,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(40.0),
@@ -205,33 +211,36 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      TextFormField(
-                        controller: confirmPasswordController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: whiteColor,
-                          hintText: 'Confirm Password',
-                          hintStyle: TextStyle(color: secondaryColor),
-                          prefixIcon: PhosphorIcon(
-                            PhosphorIconsBold.lockSimple,
-                            color: secondaryColor,
-                            size: 25.0,
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              controller.obscureText.value
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
+                      Obx(
+                        () => TextFormField(
+                          controller: confirmPasswordController,
+                          obscureText: controller.obscureText2.value,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: whiteColor,
+                            hintText: 'Confirm Password',
+                            hintStyle: TextStyle(color: secondaryColor),
+                            prefixIcon: PhosphorIcon(
+                              PhosphorIconsBold.lockSimple,
                               color: secondaryColor,
+                              size: 25.0,
                             ),
-                            onPressed: controller.togglePasswordVisibility,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                controller.obscureText2.value
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: secondaryColor,
+                              ),
+                              onPressed: controller.togglePasswordVisibility2,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(40.0),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(40.0),
-                            borderSide: BorderSide.none,
-                          ),
+                          validator: validateConfirmPassword,
                         ),
-                        validator: validateConfirmPassword,
                       ),
                       const SizedBox(height: 20),
                       TextFormField(

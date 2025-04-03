@@ -5,6 +5,7 @@ import 'package:frontend/shared/theme.dart';
 import 'package:frontend/pages/sign_up_page.dart';
 import 'package:frontend/pages/home_page.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:frontend/pages/forget_password_page.dart';
 
 class SignInController extends GetxController {
   var obscureText = true.obs;
@@ -168,7 +169,9 @@ class _SignInPageState extends State<SignInPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Get.to(ForgetPasswordPage());
+                          },
                           child: Text(
                             'Forgot Password?',
                             style: GoogleFonts.plusJakartaSans(
