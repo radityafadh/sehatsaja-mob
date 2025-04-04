@@ -17,6 +17,8 @@ import 'package:frontend/pages/detail_payment_page.dart';
 import 'package:frontend/pages/payment_method.dart';
 import 'package:frontend/pages/forget_password_page.dart';
 import 'package:frontend/pages/rename_password_page.dart';
+import 'package:frontend/pages/detail_payment_page_2.dart';
+import 'package:frontend/pages/profile_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -52,6 +54,11 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/payment-method', page: () => PaymentMethodPage()),
         GetPage(name: '/forget-password', page: () => ForgetPasswordPage()),
         GetPage(name: '/rename-password', page: () => RenamePasswordPage()),
+        GetPage(
+          name: '/detail-transaction-2',
+          page: () => DetailPaymentPage2(),
+        ),
+        GetPage(name: '/profile', page: () => ProfilePage()),
       ],
     );
   }
