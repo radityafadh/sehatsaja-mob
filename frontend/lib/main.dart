@@ -19,6 +19,10 @@ import 'package:frontend/pages/forget_password_page.dart';
 import 'package:frontend/pages/rename_password_page.dart';
 import 'package:frontend/pages/detail_payment_page_2.dart';
 import 'package:frontend/pages/profile_page.dart';
+import 'package:frontend/pages/medical_article_page.dart';
+import 'package:frontend/pages/chat_page.dart';
+import 'package:frontend/pages/chat_room_page.dart';
+import 'package:frontend/pages/map_screen_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -59,6 +63,10 @@ class MyApp extends StatelessWidget {
           page: () => DetailPaymentPage2(),
         ),
         GetPage(name: '/profile', page: () => ProfilePage()),
+        GetPage(name: '/medical-article', page: () => MedicalArticlePage()),
+        GetPage(name: '/chat', page: () => ChatPage()),
+        GetPage(name: '/chatroom', page: () => ChatRoomPage()),
+        GetPage(name: '/map-screen', page: () => MapScreen()),
       ],
     );
   }

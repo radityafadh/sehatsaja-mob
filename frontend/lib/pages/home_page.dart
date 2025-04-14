@@ -9,6 +9,10 @@ import 'package:frontend/widgets/cardnews.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/medicine_pick_page.dart';
 import 'package:frontend/pages/setting_page.dart';
+import 'package:frontend/pages/medical_article_page.dart';
+import 'package:frontend/pages/chat_page.dart';
+import 'package:frontend/widgets/map_widget.dart';
+import 'package:frontend/pages/map_screen_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -148,7 +152,9 @@ class _HomePageState extends State<HomePage> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(ChatPage());
+                },
               ),
             ],
           ),
@@ -354,7 +360,9 @@ class _HomePageState extends State<HomePage> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(() => MedicalArticlePage());
+                },
               ),
             ],
           ),
@@ -391,10 +399,25 @@ class _HomePageState extends State<HomePage> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(() => MapScreen());
+                },
               ),
             ],
           ),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: primaryColor, width: 4),
+            ),
+            child: const ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+              child: MapWidget(),
+            ),
+          ),
+          const SizedBox(height: 40),
         ],
       ),
       bottomNavigationBar: CustomBottomNavigationBar(

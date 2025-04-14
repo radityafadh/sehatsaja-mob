@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/sign_in_page.dart';
-import 'package:frontend/widgets/dialog_signout.dart';
 
 class SignoutDialog extends StatelessWidget {
   const SignoutDialog({Key? key}) : super(key: key);
