@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,8 +6,52 @@ import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
 import 'package:frontend/pages/payment_method.dart';
 
-class DetailPaymentPage2 extends StatelessWidget {
+class DetailPaymentPage2 extends StatefulWidget {
   const DetailPaymentPage2({Key? key}) : super(key: key);
+
+  @override
+  State<DetailPaymentPage2> createState() => _DetailPaymentPage2State();
+}
+
+class _DetailPaymentPage2State extends State<DetailPaymentPage2> {
+  Duration _duration = const Duration(minutes: 15);
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_duration.inSeconds == 0) {
+        timer.cancel();
+      } else {
+        setState(() {
+          _duration = _duration - const Duration(seconds: 1);
+        });
+      }
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    String minutes = duration.inMinutes
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    String seconds = duration.inSeconds
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    return "$minutes:$seconds";
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +71,7 @@ class DetailPaymentPage2 extends StatelessWidget {
       backgroundColor: lightGreyColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
           children: [
             Container(
               width: double.infinity,
@@ -154,6 +198,29 @@ class DetailPaymentPage2 extends StatelessWidget {
                     '5. Confirm details and enter PIN.\n'
                     '6. Payment is complete. Save the notification as proof of payment.',
                     style: GoogleFonts.poppins(fontSize: 12, color: blackColor),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    'Time Remaining for Payment',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: bold,
+                      color: blackColor,
+                    ),
+                  ),
+                  Text(
+                    _formatDuration(_duration),
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: extraBold,
+                      color: Colors.red,
+                    ),
                   ),
                 ],
               ),

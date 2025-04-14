@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:frontend/pages/article_history_page.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/transaction_history_page.dart';
+import 'package:frontend/pages/profile_page.dart';
 
 class SettingPage extends StatelessWidget {
   const SettingPage({super.key});
@@ -47,42 +48,47 @@ class SettingPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.user,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'John Doe',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: medium,
-                        color: blackColor,
+            GestureDetector(
+              onTap: () {
+                Get.to(ProfilePage());
+              },
+              child: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIconsBold.user,
+                    color: blackColor,
+                    size: 25.0,
+                  ),
+                  const SizedBox(width: 10.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'John Doe',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: medium,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Personal Information',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: regular,
-                        color: blackColor,
+                      Text(
+                        'Personal Information',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: regular,
+                          color: blackColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
+                    ],
+                  ),
+                  const Spacer(),
+                  PhosphorIcon(
+                    PhosphorIconsBold.arrowRight,
+                    color: primaryColor,
+                    size: 25.0,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20.0),
             GestureDetector(
@@ -169,90 +175,6 @@ class SettingPage extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 40.0),
-            Text(
-              'Settings',
-              style: GoogleFonts.poppins(
-                fontSize: 30,
-                fontWeight: medium,
-                color: blackColor,
-              ),
-            ),
-            const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.globe,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Text(
-                  'Language',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: medium,
-                    color: blackColor,
-                  ),
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.bell,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Text(
-                  'Notification',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: medium,
-                    color: blackColor,
-                  ),
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20.0),
-            Row(
-              children: [
-                PhosphorIcon(
-                  PhosphorIconsBold.questionMark,
-                  color: blackColor,
-                  size: 25.0,
-                ),
-                const SizedBox(width: 10.0),
-                Text(
-                  'Help and Support',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: medium,
-                    color: blackColor,
-                  ),
-                ),
-                const Spacer(),
-                PhosphorIcon(
-                  PhosphorIconsBold.arrowRight,
-                  color: primaryColor,
-                  size: 25.0,
-                ),
-              ],
             ),
           ],
         ),

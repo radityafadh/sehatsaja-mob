@@ -5,7 +5,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/medicine_pick_page.dart';
 import 'package:frontend/pages/home_page.dart';
-import 'package:frontend/pages/pick_doctor_page.dart';
+import 'package:frontend/pages/chat_page.dart';
+import 'package:frontend/pages/map_screen_page.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -52,7 +53,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
           IconButton(
             onPressed: () {
               onItemTapped(2);
-              Get.to(() => PickDoctorPage());
+              Get.to(() => ChatPage());
             },
             icon: PhosphorIcon(
               PhosphorIconsRegular.stethoscope,
@@ -61,7 +62,10 @@ class CustomBottomNavigationBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () => onItemTapped(3),
+            onPressed: () {
+              onItemTapped(3);
+              Get.to(() => MapScreen());
+            },
             icon: SvgPicture.asset(
               'assets/location_navbar.svg',
               height: 30,
