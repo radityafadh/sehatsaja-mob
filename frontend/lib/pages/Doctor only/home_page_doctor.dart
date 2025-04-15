@@ -4,13 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardobat.dart';
-import 'package:frontend/widgets/navbar.dart';
+import 'package:frontend/widgets/navbar_doctor.dart';
 import 'package:frontend/widgets/cardnews.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/User/medicine_pick_page.dart';
 import 'package:frontend/pages/User/setting_page.dart';
 import 'package:frontend/pages/User/medical_article_page.dart';
-import 'package:frontend/pages/User/chat_page.dart';
+import 'package:frontend/pages/Doctor only/chat_page_doctor.dart';
 import 'package:frontend/widgets/map_widget.dart';
 import 'package:frontend/pages/User/map_screen_page.dart';
 import 'package:frontend/pages/Doctor only/E-money.dart';
@@ -123,24 +123,6 @@ class _HomePageDoctorState extends State<HomePageDoctor> {
             ],
           ),
           const SizedBox(height: 20),
-          TextFormField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: whiteColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
-                borderSide: BorderSide.none,
-              ),
-              prefixIcon: Icon(Icons.search, color: secondaryColor),
-              hintText: 'Search Doctor',
-              hintStyle: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: regular,
-                color: secondaryColor,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
           Text(
             "Saldo Tersedia",
             style: GoogleFonts.poppins(
@@ -216,7 +198,7 @@ class _HomePageDoctorState extends State<HomePageDoctor> {
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
                 onPressed: () {
-                  Get.to(ChatPage());
+                  Get.to(ChatPageDoctor());
                 },
               ),
             ],
@@ -483,7 +465,7 @@ class _HomePageDoctorState extends State<HomePageDoctor> {
           const SizedBox(height: 20),
         ],
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(
+      bottomNavigationBar: CustomBottomNavigationBar_Doctor(
         onItemTapped: (index) {
           setState(() {
             selectedIndexpages = index;

@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 
-class ChatRoomController extends GetxController {
+class ChatRoomControllerDoctor extends GetxController {
   final messages = <Map<String, dynamic>>[].obs;
   final messageController = TextEditingController();
 
@@ -15,19 +15,19 @@ class ChatRoomController extends GetxController {
 
     Future.delayed(const Duration(milliseconds: 500), () {
       messages.add({
-        'text': 'Got it! Let me schedule that for you.',
+        'text': 'My stomach is hurt doc! please help',
         'isDoctor': true,
       });
     });
   }
 }
 
-class ChatRoomPage extends StatelessWidget {
-  const ChatRoomPage({super.key});
+class ChatRoomPageDoctor extends StatelessWidget {
+  const ChatRoomPageDoctor({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(ChatRoomController());
+    final controller = Get.put(ChatRoomControllerDoctor());
 
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +68,7 @@ class ChatRoomPage extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(25.0),
                           child: Image.asset(
-                            'assets/doctor.png',
+                            'assets/profile.png',
                             width: 50,
                             height: 50,
                             fit: BoxFit.cover,
@@ -79,7 +79,7 @@ class ChatRoomPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Dr. Mulyadi Akbar',
+                              'John Doe',
                               style: GoogleFonts.poppins(
                                 fontSize: 20,
                                 fontWeight: bold,
@@ -87,7 +87,7 @@ class ChatRoomPage extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'Dentist',
+                              'Patient',
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: regular,

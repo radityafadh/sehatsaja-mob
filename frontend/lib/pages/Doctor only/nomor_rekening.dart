@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
+import 'package:frontend/pages/Doctor only/E-money.dart';
+import 'package:get/get.dart';
 
 class EmoneyRekening extends StatelessWidget {
   const EmoneyRekening({Key? key}) : super(key: key);
@@ -10,7 +12,7 @@ class EmoneyRekening extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Pick Payment Method',
+          'Masukkan nomor rekening',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: bold,
@@ -25,16 +27,59 @@ class EmoneyRekening extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
         children: [
           Text(
-            'Payment Method',
+            'No Rekening',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: bold,
               color: blackColor,
             ),
           ),
-
+          TextFormField(
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: regular,
+              color: blackColor,
+            ),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.all(10.0),
+              filled: true,
+              fillColor: whiteColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20.0),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Nominal',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: bold,
+              color: blackColor,
+            ),
+          ),
+          TextFormField(
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: regular,
+              color: blackColor,
+            ),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.all(10.0),
+              filled: true,
+              fillColor: whiteColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20.0),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 50.0),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              Get.to(() => EMoneyPage());
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               shape: RoundedRectangleBorder(
@@ -44,7 +89,7 @@ class EmoneyRekening extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(10.0),
               child: Text(
-                'Add Payment Method',
+                'Lanjutkan',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: bold,

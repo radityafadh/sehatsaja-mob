@@ -46,7 +46,23 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/chat', page: () => ChatPage()),
         GetPage(name: '/chatroom', page: () => ChatRoomPage()),
         GetPage(name: '/map-screen', page: () => MapScreen()),
-        GetPage(name: '/Home-Doctor', page: () => HomePageDoctor()),
+        GetPage(name: '/home-hoctor', page: () => HomePageDoctor()),
+        GetPage(name: '/E-money', page: () => EMoneyPage()),
+        GetPage(name: '/nomor-rekening', page: () => EmoneyRekening()),
+        GetPage(
+          name: '/payment-method-emoney',
+          page: () => PaymentMethodEmoneyPage(),
+        ),
+        GetPage(name: '/chat-doctor', page: () => ChatPageDoctor()),
+        GetPage(
+          name: '/pick-medicine-doctor',
+          page: () => MedicinePickPageDoctor(),
+        ),
+        GetPage(name: '/chatroom-doctor', page: () => ChatRoomPageDoctor()),
+        GetPage(
+          name: '/detail-doctor-doctor',
+          page: () => ChatRoomPageDoctor(),
+        ),
       ],
     );
   }

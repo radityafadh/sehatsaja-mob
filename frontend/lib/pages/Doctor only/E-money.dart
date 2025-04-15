@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
 import 'package:frontend/pages/Doctor only/payment_method_emoney.dart';
+import 'package:frontend/pages/Doctor only/nomor_rekening.dart';
+import 'package:frontend/pages/Doctor only/home_page_doctor.dart';
 
 class EMoneyPage extends StatelessWidget {
   const EMoneyPage({Key? key}) : super(key: key);
@@ -124,11 +126,12 @@ class EMoneyPage extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
             SizedBox(
               width: double.infinity, // Membuat tombol selebar layar
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Get.to(() => HomePageDoctor());
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(
