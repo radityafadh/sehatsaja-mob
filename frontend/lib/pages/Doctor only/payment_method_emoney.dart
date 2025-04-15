@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
+import 'package:frontend/pages/Doctor only/nomor_rekening.dart';
+import 'package:get/get.dart';
 
 class PaymentMethodEmoneyPage extends StatelessWidget {
   const PaymentMethodEmoneyPage({Key? key}) : super(key: key);
@@ -39,7 +41,9 @@ class PaymentMethodEmoneyPage extends StatelessWidget {
           CardBankSimple(image: 'bank_bri', type: 'Virtual Account'),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              Get.to(() => EmoneyRekening());
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               shape: RoundedRectangleBorder(

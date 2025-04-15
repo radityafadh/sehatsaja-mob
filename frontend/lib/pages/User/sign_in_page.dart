@@ -26,6 +26,8 @@ class SignInPage extends StatefulWidget {
 class _SignInPageState extends State<SignInPage> {
   final SignInController controller = Get.put(SignInController());
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -119,6 +121,7 @@ class _SignInPageState extends State<SignInPage> {
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
+                        controller: emailController,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: whiteColor,
@@ -190,7 +193,12 @@ class _SignInPageState extends State<SignInPage> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              Get.to(() => HomePageDoctor());
+                              final email = emailController.text.toLowerCase();
+                              if (email.contains('doctor')) {
+                                Get.to(() => HomePageDoctor());
+                              } else {
+                                Get.to(() => HomePage());
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
