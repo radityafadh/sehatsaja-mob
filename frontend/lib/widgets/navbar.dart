@@ -3,10 +3,10 @@ import 'package:frontend/shared/theme.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/medicine_pick_page.dart';
-import 'package:frontend/pages/home_page.dart';
-import 'package:frontend/pages/chat_page.dart';
-import 'package:frontend/pages/map_screen_page.dart';
+import 'package:frontend/pages/User/medicine_pick_page.dart';
+import 'package:frontend/pages/User/home_page.dart';
+import 'package:frontend/pages/User/chat_page.dart';
+import 'package:frontend/pages/User/map_screen_page.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;

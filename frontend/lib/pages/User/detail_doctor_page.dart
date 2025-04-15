@@ -5,7 +5,7 @@ import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/containerdetail.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:frontend/widgets/experiencecard.dart';
-import 'package:frontend/pages/detail_payment_page.dart';
+import 'package:frontend/pages/User/detail_payment_page.dart';
 
 class DetailDoctorController extends GetxController {
   final RxString _currentState = 'Schedule'.obs;

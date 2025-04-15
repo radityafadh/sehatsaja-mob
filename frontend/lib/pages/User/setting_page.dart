@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:frontend/pages/article_history_page.dart';
+import 'package:frontend/pages/User/article_history_page.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/transaction_history_page.dart';
-import 'package:frontend/pages/profile_page.dart';
+import 'package:frontend/pages/User/transaction_history_page.dart';
+import 'package:frontend/pages/User/profile_page.dart';
 
 class SettingPage extends StatelessWidget {
   const SettingPage({super.key});

@@ -1,28 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/pages/medicine_pick_page.dart';
+import 'package:frontend/pages/User/medicine_pick_page.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/splash_page.dart';
-import 'package:frontend/pages/sign_in_page.dart';
-import 'package:frontend/pages/sign_up_page.dart';
-import 'package:frontend/pages/home_page.dart';
-import 'package:frontend/pages/medicine_detail_page.dart';
-import 'package:frontend/pages/news_detail_page.dart';
-import 'package:frontend/pages/medicine_add_page.dart';
-import 'package:frontend/pages/pick_doctor_page.dart';
-import 'package:frontend/pages/detail_doctor_page.dart';
-import 'package:frontend/pages/setting_page.dart';
-import 'package:frontend/pages/article_history_page.dart';
-import 'package:frontend/pages/transaction_history_page.dart';
-import 'package:frontend/pages/detail_payment_page.dart';
-import 'package:frontend/pages/payment_method.dart';
-import 'package:frontend/pages/forget_password_page.dart';
-import 'package:frontend/pages/rename_password_page.dart';
-import 'package:frontend/pages/detail_payment_page_2.dart';
-import 'package:frontend/pages/profile_page.dart';
-import 'package:frontend/pages/medical_article_page.dart';
-import 'package:frontend/pages/chat_page.dart';
-import 'package:frontend/pages/chat_room_page.dart';
-import 'package:frontend/pages/map_screen_page.dart';
+import 'package:frontend/pages/pages.dart';
 
 void main() {
   runApp(const MyApp());
@@ -67,6 +46,7 @@ class MyApp extends StatelessWidget {
         GetPage(name: '/chat', page: () => ChatPage()),
         GetPage(name: '/chatroom', page: () => ChatRoomPage()),
         GetPage(name: '/map-screen', page: () => MapScreen()),
+        GetPage(name: '/Home-Doctor', page: () => HomePageDoctor()),
       ],
     );
   }

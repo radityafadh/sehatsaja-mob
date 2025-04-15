@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'forget_password_page.dart';
-import 'package:frontend/pages/profile_page.dart';
+import 'package:frontend/pages/User/profile_page.dart';
 
 class EditProfilePage extends StatelessWidget {
   const EditProfilePage({super.key});

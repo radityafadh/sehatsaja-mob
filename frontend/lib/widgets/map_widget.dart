@@ -2,102 +2,134 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
-import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
+
+class NamedMarker {
+  final Marker marker;
+  final String name;
+
+  NamedMarker({required this.marker, required this.name});
+}
 
 class MapWidget extends StatefulWidget {
   const MapWidget({Key? key}) : super(key: key);
 
   @override
-  _MapWidgetState createState() => _MapWidgetState();
+  MapWidgetState createState() => MapWidgetState();
 }
 
-class _MapWidgetState extends State<MapWidget> {
-  LatLng _center = const LatLng(-7.2575, 112.7521); // Surabaya as default
-  List<Marker> _markers = [];
+class MapWidgetState extends State<MapWidget> {
+  LatLng _center = const LatLng(-7.2575, 112.7521);
+  List<NamedMarker> _namedMarkers = [];
+  late MapController _mapController;
 
   @override
   void initState() {
     super.initState();
-    _initLocation();
-    _fetchMarkers(); // Load markers for default location
+    _mapController = MapController();
+    _fetchMarkers();
   }
 
-  Future<void> _initLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-
-    if (permission == LocationPermission.deniedForever) return;
-
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      setState(() {
-        _center = LatLng(position.latitude, position.longitude);
-      });
-
-      _fetchMarkers(); // Refresh markers based on actual location
-    } catch (e) {
-      debugPrint('Failed to get location: $e');
-    }
+  Future<void> moveToLocation(LatLng newLocation) async {
+    setState(() {
+      _center = newLocation;
+    });
+    _mapController.move(newLocation, 17.0); // Zoom to level 17
   }
 
   Future<void> _fetchMarkers() async {
     final lat = _center.latitude;
     final lon = _center.longitude;
 
-    final response = await http.get(
-      Uri.parse(
-        'https://overpass-api.de/api/interpreter?data=[out:json];('
-        'node["amenity"="blood_donation"](around:10000,$lat,$lon);'
-        'node["amenity"="clinic"](around:10000,$lat,$lon);'
-        'node["amenity"="dentist"](around:10000,$lat,$lon);'
-        'node["amenity"="doctor"](around:10000,$lat,$lon);'
-        'node["amenity"="hospital"](around:10000,$lat,$lon);'
-        'node["amenity"="nursing_home"](around:10000,$lat,$lon);'
-        'node["amenity"="pharmacy"](around:10000,$lat,$lon);'
-        'node["amenity"="social_facility"](around:10000,$lat,$lon);'
-        'node["amenity"="veterinary"](around:10000,$lat,$lon);'
-        ');out;',
-      ),
+    final bbox = '${lat - 0.1},${lon - 0.1},${lat + 0.1},${lon + 0.1}';
+
+    final query = '''
+    [out:json][timeout:25];
+    (
+      node["amenity"="hospital"]($bbox);
+      way["amenity"="hospital"]($bbox);
+      relation["amenity"="hospital"]($bbox);
+
+      node["amenity"="clinic"]($bbox);
+      way["amenity"="clinic"]($bbox);
+      relation["amenity"="clinic"]($bbox);
+
+      node["amenity"="pharmacy"]($bbox);
+      node["amenity"="doctors"]($bbox);
+      node["amenity"="dentist"]($bbox);
+      node["amenity"="veterinary"]($bbox);
+      node["amenity"="nursing_home"]($bbox);
+      node["amenity"="social_facility"]($bbox);
+      node["amenity"="blood_donation"]($bbox);
     );
+    out center;
+    ''';
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      List<Marker> markers = [];
+    final encodedQuery = Uri.encodeComponent(query);
 
-      for (var element in data['elements']) {
-        if (element['lat'] != null && element['lon'] != null) {
-          String amenity = element['tags']?['amenity'] ?? '';
-          String iconPath = _getIconPath(amenity);
+    try {
+      final response = await http.get(
+        Uri.parse('https://overpass-api.de/api/interpreter?data=$encodedQuery'),
+      );
 
-          markers.add(
-            Marker(
-              point: LatLng(element['lat'], element['lon']),
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Fetched data: $data');
+
+        List<NamedMarker> namedMarkers = [];
+
+        for (var element in data['elements']) {
+          final lat = element['lat'] ?? element['center']?['lat'];
+          final lon = element['lon'] ?? element['center']?['lon'];
+
+          if (lat != null && lon != null) {
+            String amenity = element['tags']?['amenity'] ?? '';
+            String name =
+                element['tags']?['name'] ?? 'Unnamed ${_capitalize(amenity)}';
+            String iconPath = _getIconPath(amenity);
+
+            print('Adding marker: Lat: $lat, Lon: $lon, Name: $name');
+
+            final marker = Marker(
+              point: LatLng(lat, lon),
               width: 40,
               height: 40,
-              child: Image.asset(iconPath),
-            ),
-          );
-        }
-      }
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder:
+                        (context) => AlertDialog(
+                          title: const Text('Location Info'),
+                          content: Text(name),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        ),
+                  );
+                },
+                child: Image.asset(iconPath),
+              ),
+            );
 
-      setState(() {
-        _markers = markers;
-      });
-    } else {
-      throw Exception('Failed to load places');
+            namedMarkers.add(NamedMarker(marker: marker, name: name));
+          }
+        }
+
+        setState(() {
+          _namedMarkers = namedMarkers;
+        });
+      } else {
+        print(
+          'Error fetching data: ${response.statusCode}, Response: ${response.body}',
+        );
+        throw Exception('Failed to load markers');
+      }
+    } catch (e) {
+      print('Error fetching markers: $e');
     }
   }
 
@@ -109,7 +141,7 @@ class _MapWidgetState extends State<MapWidget> {
         return 'assets/icon maps/clinic icon.png';
       case 'dentist':
         return 'assets/icon maps/dentist icon.png';
-      case 'doctor':
+      case 'doctors':
         return 'assets/icon maps/doctors icon.png';
       case 'hospital':
         return 'assets/icon maps/hospital icon.png';
@@ -126,9 +158,17 @@ class _MapWidgetState extends State<MapWidget> {
     }
   }
 
+  String _capitalize(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
+  }
+
+  List<NamedMarker> getNamedMarkers() => _namedMarkers;
+
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
+      mapController: _mapController,
       options: MapOptions(initialCenter: _center, initialZoom: 13.0),
       children: [
         TileLayer(
@@ -136,7 +176,7 @@ class _MapWidgetState extends State<MapWidget> {
           subdomains: ['a', 'b', 'c'],
           userAgentPackageName: 'com.example.app',
         ),
-        MarkerLayer(markers: _markers),
+        MarkerLayer(markers: _namedMarkers.map((e) => e.marker).toList()),
       ],
     );
   }

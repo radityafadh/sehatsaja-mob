@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
-import 'package:frontend/pages/pick_doctor_page.dart';
+import 'package:frontend/pages/User/pick_doctor_page.dart';
 import 'package:get/get.dart';
 import 'package:frontend/widgets/chatbox.dart';
 import 'package:frontend/widgets/navbar.dart';

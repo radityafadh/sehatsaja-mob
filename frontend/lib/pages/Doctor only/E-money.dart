@@ -3,18 +3,17 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
-import 'package:frontend/pages/payment_method.dart';
-import 'package:frontend/pages/detail_payment_page_2.dart';
+import 'package:frontend/pages/Doctor only/payment_method_emoney.dart';
 
-class DetailPaymentPage extends StatelessWidget {
-  const DetailPaymentPage({Key? key}) : super(key: key);
+class EMoneyPage extends StatelessWidget {
+  const EMoneyPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Detail Pembayaran',
+          'E-money',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: bold,
@@ -40,15 +39,6 @@ class DetailPaymentPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Consultation session with :',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: bold,
-                      color: blackColor,
-                    ),
-                  ),
-                  SizedBox(height: 10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -56,8 +46,8 @@ class DetailPaymentPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8.0),
                         child: Image.asset(
                           'assets/doctor.png',
-                          width: 100,
-                          height: 100,
+                          width: 80,
+                          height: 80,
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -73,15 +63,7 @@ class DetailPaymentPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '1x Session',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: regular,
-                              color: blackColor,
-                            ),
-                          ),
-                          Text(
-                            '8.00 Am',
+                            'Rp. 30.000,00',
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: regular,
@@ -96,77 +78,6 @@ class DetailPaymentPage extends StatelessWidget {
               ),
             ),
             SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: whiteColor,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Transaction Details',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: bold,
-                      color: blackColor,
-                    ),
-                  ),
-                  Text(
-                    'Transaction number : 0000000001',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: regular,
-                      color: blackColor,
-                    ),
-                  ),
-                  Text(
-                    'Transaction date : 06 February 2025 09:00 WIB',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: regular,
-                      color: blackColor,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Consultation Details',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: bold,
-                      color: blackColor,
-                    ),
-                  ),
-                  Text(
-                    'TDoctor                       : Dr. Mulyadi Akbar',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: regular,
-                      color: blackColor,
-                    ),
-                  ),
-                  Text(
-                    'Session                       : 1x Session',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: regular,
-                      color: blackColor,
-                    ),
-                  ),
-                  Text(
-                    'Time                            : 8.00 Am',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: regular,
-                      color: blackColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
             Row(
               children: [
                 Text(
@@ -184,14 +95,14 @@ class DetailPaymentPage extends StatelessWidget {
                     color: primaryColor,
                   ),
                   onPressed: () {
-                    Get.to(() => PaymentMethodPage());
+                    Get.to(() => PaymentMethodEmoneyPage());
                   },
                 ),
               ],
             ),
             const SizedBox(height: 10),
             CardBankSimple(image: 'bank_mandiri', type: 'Virtual Account'),
-            const SizedBox(height: 10),
+            Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -213,13 +124,11 @@ class DetailPaymentPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const Spacer(),
             SizedBox(
               width: double.infinity, // Membuat tombol selebar layar
               child: ElevatedButton(
-                onPressed: () {
-                  Get.to(() => DetailPaymentPage2());
-                },
+                onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   shape: RoundedRectangleBorder(
@@ -227,7 +136,7 @@ class DetailPaymentPage extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'Pay Now',
+                  'Transfer now',
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.bold, // Perbaiki `bold`
