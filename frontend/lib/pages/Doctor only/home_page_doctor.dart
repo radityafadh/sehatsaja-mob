@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/pages/news_detail_page.dart';
+import 'package:frontend/pages/User/news_detail_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:frontend/shared/theme.dart';
@@ -7,21 +7,22 @@ import 'package:frontend/widgets/cardobat.dart';
 import 'package:frontend/widgets/navbar.dart';
 import 'package:frontend/widgets/cardnews.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/medicine_pick_page.dart';
-import 'package:frontend/pages/setting_page.dart';
-import 'package:frontend/pages/medical_article_page.dart';
-import 'package:frontend/pages/chat_page.dart';
+import 'package:frontend/pages/User/medicine_pick_page.dart';
+import 'package:frontend/pages/User/setting_page.dart';
+import 'package:frontend/pages/User/medical_article_page.dart';
+import 'package:frontend/pages/User/chat_page.dart';
 import 'package:frontend/widgets/map_widget.dart';
-import 'package:frontend/pages/map_screen_page.dart';
+import 'package:frontend/pages/User/map_screen_page.dart';
+import 'package:frontend/pages/Doctor only/E-money.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+class HomePageDoctor extends StatefulWidget {
+  const HomePageDoctor({Key? key}) : super(key: key);
 
   @override
-  _HomePageState createState() => _HomePageState();
+  _HomePageDoctorState createState() => _HomePageDoctorState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageDoctorState extends State<HomePageDoctor> {
   int selectedIndexpages = 0;
   int? selectedIndex;
 
@@ -57,7 +58,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   Text(
-                    'John Doe',
+                    'Mulyadi Akbar',
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: bold,
@@ -109,7 +110,7 @@ class _HomePageState extends State<HomePage> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(50),
                         child: Image.asset(
-                          'assets/profile.png',
+                          'assets/doctor.png',
                           width: 36,
                           height: 36,
                           fit: BoxFit.cover,
@@ -137,6 +138,68 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: regular,
                 color: secondaryColor,
               ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            "Saldo Tersedia",
+            style: GoogleFonts.poppins(
+              fontSize: 30,
+              fontWeight: bold,
+              color: blackColor,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(20.0),
+            decoration: BoxDecoration(
+              color: primaryColor,
+              borderRadius: BorderRadius.circular(25.0),
+            ),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Rp. 100.000',
+                      style: GoogleFonts.poppins(
+                        fontSize: 40,
+                        fontWeight: regular,
+                        color: whiteColor,
+                      ),
+                    ),
+                    Text(
+                      'Total Saldo',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: regular,
+                        color: whiteColor,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        Get.to(EMoneyPage());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: whiteColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        'Transfer bank',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),
@@ -171,7 +234,7 @@ class _HomePageState extends State<HomePage> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(50),
                       child: Image.asset(
-                        'assets/doctor.png',
+                        'assets/profile.png',
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover,
@@ -182,7 +245,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Dr. Mulyadi Akbar',
+                          'John Doe',
                           style: TextStyle(
                             color: whiteColor,
                             fontSize: 20.0,
@@ -190,7 +253,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         Text(
-                          'Dentist',
+                          'Patient',
                           style: TextStyle(color: whiteColor, fontSize: 16.0),
                         ),
                       ],
@@ -417,7 +480,7 @@ class _HomePageState extends State<HomePage> {
               child: MapWidget(),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
         ],
       ),
       bottomNavigationBar: CustomBottomNavigationBar(

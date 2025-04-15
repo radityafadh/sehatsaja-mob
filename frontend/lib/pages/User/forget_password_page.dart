@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
-import 'package:frontend/pages/sign_in_page.dart';
+import 'package:frontend/pages/User/sign_in_page.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:frontend/pages/rename_password_page.dart';
+import 'package:frontend/pages/User/rename_password_page.dart';
 
 class ForgetPasswordPage extends StatefulWidget {
   const ForgetPasswordPage({Key? key}) : super(key: key);

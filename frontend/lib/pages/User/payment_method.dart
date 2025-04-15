@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
+import 'package:frontend/pages/User/detail_payment_page.dart';
+import 'package:get/get.dart';
 
 class PaymentMethodPage extends StatelessWidget {
   const PaymentMethodPage({Key? key}) : super(key: key);
@@ -50,6 +52,29 @@ class PaymentMethodPage extends StatelessWidget {
           CardBankSimple(image: 'bank_bni', type: 'ATM Bank'),
           CardBankSimple(image: 'bank_mandiri', type: 'ATM Bank'),
           CardBankSimple(image: 'bank_bri', type: 'ATM Bank'),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              Get.to(DetailPaymentPage());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Text(
+                'Add Payment Method',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: bold,
+                  color: whiteColor,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

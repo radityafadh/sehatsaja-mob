@@ -5,7 +5,7 @@ import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'forget_password_page.dart';
 import 'package:frontend/widgets/dialog_signout.dart';
-import 'package:frontend/pages/edit_profile_page.dart';
+import 'package:frontend/pages/User/edit_profile_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});

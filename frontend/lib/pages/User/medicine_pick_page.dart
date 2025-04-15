@@ -5,7 +5,7 @@ import 'package:frontend/widgets/navbar.dart';
 import 'package:frontend/widgets/cardobat.dart';
 import 'package:frontend/widgets/dropdown.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/medicine_add_page.dart';
+import 'package:frontend/pages/User/medicine_add_page.dart';
 
 class MedicinePickPage extends StatefulWidget {
   const MedicinePickPage({Key? key}) : super(key: key);

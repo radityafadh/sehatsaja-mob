@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:get/get.dart';
-import 'package:frontend/pages/medicine_pick_page.dart';
+import 'package:frontend/pages/User/medicine_pick_page.dart';
 
 class MedicineAddPage extends StatefulWidget {
   const MedicineAddPage({super.key});

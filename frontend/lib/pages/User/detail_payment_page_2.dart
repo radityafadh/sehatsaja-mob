@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/cardbanksimple.dart';
-import 'package:frontend/pages/payment_method.dart';
+import 'package:frontend/pages/User/payment_method.dart';
 
 class DetailPaymentPage2 extends StatefulWidget {
   const DetailPaymentPage2({Key? key}) : super(key: key);
