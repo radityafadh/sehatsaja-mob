@@ -4,26 +4,24 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ExperienceCard extends StatelessWidget {
-  final String role;
-  final String place;
-  final String time;
-  final String detail;
+  final String experienceString;
 
-  const ExperienceCard({
-    Key? key,
-    required this.role,
-    required this.place,
-    required this.time,
-    required this.detail,
-  }) : super(key: key);
+  const ExperienceCard({Key? key, required this.experienceString})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    Color borderColor = primaryColor;
+    // Asumsikan format string: "role - place - time - detail"
+    final parts = experienceString.split(' - ');
+
+    final role = parts.length > 0 ? parts[0] : 'Role';
+    final place = parts.length > 1 ? parts[1] : 'Place';
+    final time = parts.length > 2 ? parts[2] : 'Time';
+    final detail = parts.length > 3 ? parts[3] : 'Detail';
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(color: whiteColor),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +41,7 @@ class ExperienceCard extends StatelessWidget {
                         color: blackColor,
                       ),
                     ),
-                    SizedBox(width: 10.0),
+                    const SizedBox(width: 10.0),
                     Text(
                       place,
                       style: GoogleFonts.poppins(
@@ -62,7 +60,7 @@ class ExperienceCard extends StatelessWidget {
                     color: blackColor,
                   ),
                 ),
-                SizedBox(height: 5.0),
+                const SizedBox(height: 5.0),
                 Text(
                   detail,
                   style: GoogleFonts.poppins(

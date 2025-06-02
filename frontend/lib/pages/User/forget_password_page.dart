@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
-import 'package:frontend/pages/User/sign_in_page.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:frontend/pages/User/rename_password_page.dart';
 
 class ForgetPasswordPage extends StatefulWidget {
@@ -15,6 +15,7 @@ class ForgetPasswordPage extends StatefulWidget {
 
 class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController emailController = TextEditingController();
 
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -26,6 +27,12 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
       return 'Masukkan email yang benar';
     }
     return null;
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
   }
 
   @override
@@ -64,6 +71,7 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextFormField(
+                  controller: emailController,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: whiteColor,
@@ -83,14 +91,38 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                 ),
               ),
               const SizedBox(height: 40),
-              // Next Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      Get.to(RenamePasswordPage());
+                      final currentUser = FirebaseAuth.instance.currentUser;
+
+                      if (currentUser != null) {
+                        final enteredEmail = emailController.text.trim();
+                        final currentEmail = currentUser.email;
+
+                        if (enteredEmail == currentEmail) {
+                          Get.to(RenamePasswordPage());
+                        } else {
+                          Get.snackbar(
+                            'Email Tidak Cocok',
+                            'Silakan masukkan email yang sama dengan akun yang sedang login.',
+                            backgroundColor: Colors.red.shade100,
+                            colorText: Colors.red.shade900,
+                            snackPosition: SnackPosition.TOP,
+                          );
+                        }
+                      } else {
+                        Get.snackbar(
+                          'Tidak Ada Pengguna',
+                          'Tidak ada pengguna yang sedang login.',
+                          backgroundColor: Colors.orange.shade100,
+                          colorText: Colors.orange.shade900,
+                          snackPosition: SnackPosition.BOTTOM,
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -110,13 +142,12 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Cancel Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    Get.to(() => const SignInPage());
+                    Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: whiteColor,

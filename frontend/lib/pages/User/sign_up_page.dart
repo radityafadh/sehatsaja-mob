@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpController extends GetxController {
   var obscureText1 = true.obs;
@@ -35,6 +37,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController phoneController = TextEditingController();
 
   String? selectedGender;
+  bool _isSigningUp = false; // Track sign-up state
 
   // Validators
   String? validateEmail(String? value) {
@@ -45,8 +48,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
   String? validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'Masukkan password anda';
-    if (value.length < 8) return 'Password minimal 8 karakter';
-    if (value.length > 20) return 'Password maksimal 20 karakter';
     return null;
   }
 
@@ -58,7 +59,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
   String? validatePhone(String? value) {
     if (value == null || value.isEmpty) return 'Masukkan nomor telepon anda';
-    final RegExp phoneRegex = RegExp(r'^\+?628\d{9,}$'); // Supports +628 or 628
+    final RegExp phoneRegex = RegExp(r'^\+?08\d{9,}$');
     return phoneRegex.hasMatch(value)
         ? null
         : 'Masukkan nomor telepon yang benar';
@@ -71,13 +72,105 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
-  void submitForm() {
-    if (_formKey.currentState!.validate()) {
-      print("Email: ${emailController.text}");
-      print("Password: ${passwordController.text}");
-      print("Phone: ${phoneController.text}");
-      print("Gender: $selectedGender");
+  void submitForm() async {
+    if (_formKey.currentState!.validate() && selectedGender != null) {
+      setState(() {
+        _isSigningUp = true; // Set state to indicate sign-up is in progress
+      });
+      try {
+        final auth = FirebaseAuth.instance;
+        final firestore = FirebaseFirestore.instance;
+
+        final email = emailController.text.trim();
+        final password = passwordController.text.trim();
+        final phone = phoneController.text.trim();
+
+        // Register the user
+        UserCredential userCredential = await auth
+            .createUserWithEmailAndPassword(email: email, password: password);
+
+        final uid = userCredential.user?.uid;
+        if (uid == null) {
+          throw FirebaseAuthException(
+            code: 'uid-not-found', //Custom error code
+            message: 'User ID not found after registration.',
+          );
+        }
+
+        // Store user profile in Firestore
+        await firestore.collection('users').doc(uid).set({
+          'uid': uid,
+          'email': email,
+          'phone': phone,
+          'gender': selectedGender,
+          'name': '',
+          'birthDate': '',
+          'photoUrl': '',
+          'role': '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': '',
+        });
+
+        Get.snackbar(
+          'Success',
+          'Akun berhasil dibuat',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+        Get.offNamed('/login'); // Navigate to login after successful signup
+      } on FirebaseAuthException catch (e) {
+        String message;
+        switch (e.code) {
+          case 'email-already-in-use':
+            message = 'Email sudah digunakan.';
+            break;
+          case 'invalid-email':
+            message = 'Format email tidak valid.';
+            break;
+          case 'weak-password':
+            message = 'Password terlalu lemah.';
+            break;
+          case 'operation-not-allowed':
+            message = 'Pendaftaran dengan email/password tidak diizinkan.';
+            break;
+          case 'uid-not-found':
+            message = 'Terjadi kesalahan: User ID tidak ditemukan.';
+            break;
+          default:
+            message = 'Terjadi kesalahan. ${e.message ?? 'Unknown error.'}';
+        }
+
+        Get.snackbar(
+          'Error',
+          message,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      } catch (e) {
+        Get.snackbar(
+          'Error',
+          'Terjadi kesalahan tak terduga: ${e.toString()}',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      } finally {
+        setState(() {
+          _isSigningUp =
+              false; // Set state back to false regardless of success/failure
+        });
+      }
+    } else {
+      setState(() {}); // Refresh UI to show validation messages
     }
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    phoneController.dispose();
+    super.dispose();
   }
 
   @override
@@ -109,7 +202,7 @@ class _SignUpPageState extends State<SignUpPage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              padding: EdgeInsets.only(
+              padding: const EdgeInsets.only(
                 top: 20,
                 left: 40,
                 right: 40,
@@ -321,9 +414,9 @@ class _SignUpPageState extends State<SignUpPage> {
                                     PhosphorIconsBold.genderFemale,
                                     size: 26.0,
                                     color:
-                                        selectedGender == "Male"
-                                            ? femaleColor
-                                            : whiteColor,
+                                        selectedGender == "Female"
+                                            ? whiteColor
+                                            : femaleColor,
                                   ),
                                   Text(
                                     "   Female",
@@ -345,7 +438,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           alignment: Alignment.center,
                           child: Text(
                             validateGender()!,
-                            style: TextStyle(color: Color(0xFFBA433B)),
+                            style: const TextStyle(color: Color(0xFFBA433B)),
                           ),
                         ),
                       const SizedBox(height: 70),
@@ -354,6 +447,10 @@ class _SignUpPageState extends State<SignUpPage> {
                         child: SizedBox(
                           width: 300,
                           child: ElevatedButton(
+                            onPressed:
+                                _isSigningUp
+                                    ? null
+                                    : submitForm, // Disable button during sign-up
                             style: ElevatedButton.styleFrom(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(40.0),
@@ -365,15 +462,21 @@ class _SignUpPageState extends State<SignUpPage> {
                                 color: whiteColor,
                               ),
                             ),
-                            onPressed: submitForm,
-                            child: Text(
-                              "Sign up",
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: semiBold,
-                                color: whiteColor,
-                              ),
-                            ),
+                            child:
+                                _isSigningUp
+                                    ? const CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ), // Show loading indicator
+                                    )
+                                    : Text(
+                                      "Sign up",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 20,
+                                        fontWeight: semiBold,
+                                        color: whiteColor,
+                                      ),
+                                    ),
                           ),
                         ),
                       ),

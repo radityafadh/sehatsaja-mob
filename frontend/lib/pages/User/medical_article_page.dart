@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
@@ -12,14 +14,32 @@ class MedicalArticlePage extends StatefulWidget {
 }
 
 final List<String> categories = [
-  'Clinical Medicine',
-  'Research & Innovation',
-  'Public Health & Policy',
+  'Medication',
+  'Nursing',
+  'Emergency',
+  'Training',
+  'Education',
+  'Patient Care',
+  'Hygiene',
+  'Technology',
+  'Innovation',
+  'Mental Health',
+  'Support',
+  'Rural',
+  'Access',
+  'Diversity',
+  'Ethics',
+  'Chronic Illness',
+  'Long-term Care',
+  'Telehealth',
+  'Future',
+  'Nutrition',
+  'Decision Making',
 ];
 
-final List<String> sortby = ['relevance', 'newest', 'oldest'];
-
 class _MedicalArticlePage extends State<MedicalArticlePage> {
+  String selectedCategory = categories.first;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,7 +60,7 @@ class _MedicalArticlePage extends State<MedicalArticlePage> {
         padding: const EdgeInsets.symmetric(horizontal: 30.0),
         child: Column(
           children: [
-            SizedBox(height: 16.0),
+            const SizedBox(height: 16.0),
             TextField(
               decoration: InputDecoration(
                 filled: true,
@@ -50,7 +70,7 @@ class _MedicalArticlePage extends State<MedicalArticlePage> {
                   borderSide: BorderSide.none,
                 ),
                 prefixIcon: Icon(Icons.search, color: secondaryColor),
-                hintText: 'Search Doctor',
+                hintText: 'Search Article',
                 hintStyle: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: regular,
@@ -58,20 +78,46 @@ class _MedicalArticlePage extends State<MedicalArticlePage> {
                 ),
               ),
             ),
-            SizedBox(height: 16.0),
-            CustomDropdown(items: categories),
-            SizedBox(height: 16.0),
-            CustomDropdown(items: sortby),
-            SizedBox(height: 16.0),
+            const SizedBox(height: 16.0),
+            CustomDropdown(
+              items: categories,
+              value: selectedCategory,
+              onChanged: (value) {
+                setState(() {
+                  selectedCategory = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16.0),
             Expanded(
-              child: ListView.separated(
-                itemCount: 3,
-                separatorBuilder: (context, index) => SizedBox(height: 20),
-                itemBuilder: (context, index) {
-                  return CardNewsLong(
-                    image: 'assets/news1.png',
-                    detail: 'lorem ipsum dolor sit amet perci pesidasius',
-                    detailPageRoute: '/detail-news',
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('news')
+                        .where('labels', arrayContains: selectedCategory)
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('No articles found.'));
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder:
+                        (context, index) => const SizedBox(height: 20),
+                    itemBuilder: (context, index) {
+                      final docId = docs[index].id;
+
+                      return CardNewsLong(
+                        id: docId, // Teruskan ID dokumen ke CardNewsLong
+                      );
+                    },
                   );
                 },
               ),
