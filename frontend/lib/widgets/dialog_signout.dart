@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/User/sign_in_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignoutDialog extends StatelessWidget {
   const SignoutDialog({Key? key}) : super(key: key);
@@ -45,9 +46,10 @@ class SignoutDialog extends StatelessWidget {
               ),
               // "Ya" Button
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(context).pop();
-                  Get.to(() => SignInPage());
+                  await FirebaseAuth.instance.signOut();
+                  Get.offAll(() => SignInPage());
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,

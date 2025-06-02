@@ -2,28 +2,82 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:frontend/pages/User/article_history_page.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/User/transaction_history_page.dart';
 import 'package:frontend/pages/User/profile_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:frontend/pages/User/home_page.dart';
 
-class SettingPage extends StatelessWidget {
+class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
+
+  @override
+  State<SettingPage> createState() => _SettingPageState();
+}
+
+class _SettingPageState extends State<SettingPage> {
+  String name = 'Guest';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDisplayName();
+  }
+
+  Future<void> fetchDisplayName() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      try {
+        final doc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+
+        if (doc.exists) {
+          setState(() {
+            name = doc['name'] ?? 'Guest';
+          });
+        } else {
+          setState(() {
+            name = 'Unknown';
+          });
+        }
+      } catch (e) {
+        print('Error fetching displayName: $e');
+        setState(() {
+          name = 'Guest';
+        });
+      }
+    } else {
+      setState(() {
+        name = 'Guest';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: lightGreyColor,
       appBar: AppBar(
         title: Text(
           '',
           style: GoogleFonts.poppins(
             fontSize: 16,
-            fontWeight: bold,
-            color: lightGreyColor,
+            fontWeight: FontWeight.bold,
+            color: blackColor,
           ),
         ),
+        centerTitle: true,
         backgroundColor: lightGreyColor,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: blackColor),
+          onPressed: () {
+            Get.to(HomePage());
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
@@ -64,7 +118,7 @@ class SettingPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'John Doe',
+                        name,
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: medium,
@@ -73,49 +127,6 @@ class SettingPage extends StatelessWidget {
                       ),
                       Text(
                         'Personal Information',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: regular,
-                          color: blackColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  PhosphorIcon(
-                    PhosphorIconsBold.arrowRight,
-                    color: primaryColor,
-                    size: 25.0,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20.0),
-            GestureDetector(
-              onTap: () {
-                Get.to(ArticleHistoryPage());
-              },
-              child: Row(
-                children: [
-                  PhosphorIcon(
-                    PhosphorIconsBold.clock,
-                    color: blackColor,
-                    size: 25.0,
-                  ),
-                  const SizedBox(width: 10.0),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'History',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: medium,
-                          color: blackColor,
-                        ),
-                      ),
-                      Text(
-                        'Article Read',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: regular,

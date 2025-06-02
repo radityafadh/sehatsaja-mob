@@ -1,106 +1,115 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend/shared/theme.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; // Import the intl package
 
 class NewsDetailPage extends StatelessWidget {
-  const NewsDetailPage({super.key});
+  final String newsId;
+
+  const NewsDetailPage({Key? key, required this.newsId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: whiteColor,
-      appBar: AppBar(
-        title: const Text(''),
-        backgroundColor: whiteColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        actions: <Widget>[
-          IconButton(
-            icon: PhosphorIcon(
-              PhosphorIconsRegular.shareNetwork,
-              size: 30.0,
-              color: blackColor,
+      backgroundColor: lightGreyColor,
+      appBar: AppBar(title: const Text('News Detail')),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance.collection('news').doc(newsId).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('Article not found'));
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+
+          final String title = data['title'] ?? '';
+          final String author = data['author'] ?? '';
+
+          // FIX: Handle Timestamp conversion for date
+          String formattedDate = 'Unknown Date';
+          if (data['date'] is Timestamp) {
+            final Timestamp timestamp = data['date'];
+            final DateTime dateTime = timestamp.toDate();
+            // Format the date as desired, e.g., "MMM dd, yyyy" or "dd MMMM yyyy"
+            formattedDate = DateFormat('dd MMMM yyyy').format(dateTime);
+          } else if (data['date'] is String) {
+            // If it's already a string (e.g., manually entered), use it directly
+            formattedDate = data['date'];
+          }
+
+          final String base64Image = data['image'] ?? '';
+          final List<String> content = List<String>.from(data['content'] ?? []);
+          final List<String> labels = List<String>.from(data['labels'] ?? []);
+
+          // Handle case where base64Image might be empty or invalid
+          Uint8List imageBytes;
+          try {
+            if (base64Image.isNotEmpty) {
+              imageBytes = base64Decode(base64Image.split(',').last);
+            } else {
+              imageBytes = Uint8List(0); // Empty byte array for placeholder
+            }
+          } catch (e) {
+            print('Error decoding base64 image: $e');
+            imageBytes = Uint8List(0); // Fallback to empty if decoding fails
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Display image or a placeholder if imageBytes is empty
+                imageBytes.isNotEmpty
+                    ? Image.memory(imageBytes, fit: BoxFit.cover)
+                    : Container(
+                      height: 200, // Adjust height as needed
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          size: 100,
+                          color: Colors.grey[400],
+                        ),
+                      ),
+                    ),
+                const SizedBox(height: 16),
+                Text(title, style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text('By $author • $formattedDate'), // Use the formatted date
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Tambahkan ini
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      children:
+                          labels
+                              .map((label) => Chip(label: Text(label)))
+                              .toList(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ...content.map(
+                  (paragraph) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Text(paragraph),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: PhosphorIcon(
-              PhosphorIconsRegular.slidersHorizontal,
-              size: 30.0,
-              color: blackColor,
-            ),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 10.0),
-        children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: Text(
-              'January, 14 2025 - 19.20',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: regular,
-                color: blackColor,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'The Proper Use of Medication: The Role of Nurses in Ensuring Patient Safety',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: bold,
-              color: blackColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-            child: Image.asset(
-              'assets/news1.png',
-              height: 180,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Nurses play a crucial role in ensuring the proper use of medication for patients. As frontline healthcare professionals, they are responsible for administering medication according to the prescribed dosage, schedule, and method recommended by doctors. Medication errors, such as incorrect dosages or overlooked drug interactions, can have fatal consequences for patients. Therefore, nurses must have a strong understanding of pharmacology, side effects, and safe medication administration procedures.',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: medium,
-              color: blackColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'In addition, nurses are also responsible for educating patients on how to take their medication independently, especially those undergoing long-term treatment. Effective communication between nurses, doctors, and patients is essential to prevent errors and ensure patient adherence to medication regimens. Through discipline, accuracy, and a strong understanding of medication management, nurses play a vital role in enhancing patient safety and the effectiveness of drug therapy.',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: medium,
-              color: blackColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Furthermore, nurses play a key role in monitoring patients for any adverse reactions or unexpected side effects after medication administration. Their ability to promptly recognize and respond to these issues can prevent complications and improve patient outcomes. By regularly assessing a patient’s condition and documenting any changes, nurses contribute valuable information that helps physicians make necessary adjustments to the treatment plan. This continuous monitoring ensures that medications remain both safe and effective throughout the course of therapy.',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: medium,
-              color: blackColor,
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

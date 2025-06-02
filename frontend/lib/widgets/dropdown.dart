@@ -2,23 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class CustomDropdown extends StatefulWidget {
+class CustomDropdown extends StatelessWidget {
   final List<String> items;
+  final String value;
+  final Function(String) onChanged;
 
-  const CustomDropdown({Key? key, required this.items}) : super(key: key);
-
-  @override
-  _CustomDropdownState createState() => _CustomDropdownState();
-}
-
-class _CustomDropdownState extends State<CustomDropdown> {
-  late String selectedValue;
-
-  @override
-  void initState() {
-    super.initState();
-    selectedValue = widget.items.first;
-  }
+  const CustomDropdown({
+    Key? key,
+    required this.items,
+    required this.value,
+    required this.onChanged,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -30,16 +24,16 @@ class _CustomDropdownState extends State<CustomDropdown> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: selectedValue,
+          value: value,
           isExpanded: true,
           icon: Icon(Icons.arrow_drop_down, color: blackColor),
           onChanged: (String? newValue) {
             if (newValue != null) {
-              setState(() => selectedValue = newValue);
+              onChanged(newValue); // Notify parent
             }
           },
           items:
-              widget.items.map((item) {
+              items.map((item) {
                 return DropdownMenuItem<String>(
                   value: item,
                   child: Text(

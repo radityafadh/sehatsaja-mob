@@ -13,6 +13,11 @@ import 'package:frontend/pages/User/medical_article_page.dart';
 import 'package:frontend/pages/User/chat_page.dart';
 import 'package:frontend/widgets/map_widget.dart';
 import 'package:frontend/pages/User/map_screen_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -23,15 +28,265 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedIndexpages = 0;
-  int? selectedIndex;
+  String name = 'Loading...';
+  Uint8List? profilePhotoBytes;
+  String profilePhotoUrl = '';
+  Map<String, dynamic>? upcomingAppointment;
+  bool isLoadingAppointment = true;
 
-  void onItemTapped(int index) {
-    setState(() {
-      selectedIndex = index;
-    });
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+    fetchUpcomingAppointment();
   }
 
-  List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  Future<void> fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => name = 'Guest');
+      return;
+    }
+
+    try {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+      if (doc.exists) {
+        setState(() {
+          name = doc['name'] ?? 'Guest';
+          profilePhotoUrl = doc['photoUrl'] ?? '';
+          profilePhotoBytes = null;
+
+          if (profilePhotoUrl.isNotEmpty) {
+            try {
+              // If the string starts with a base64 data URI, remove the prefix
+              final base64PrefixRegex = RegExp(r'data:image/[^;]+;base64,');
+              final cleanedBase64 = profilePhotoUrl.replaceFirst(
+                base64PrefixRegex,
+                '',
+              );
+
+              profilePhotoBytes = base64Decode(cleanedBase64);
+            } catch (e) {
+              print('Failed to decode base64 image: $e');
+              profilePhotoBytes = null;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error fetching user data: $e');
+      setState(() => name = 'Guest');
+    }
+  }
+
+  Future<void> fetchUpcomingAppointment() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('Debug: No user logged in');
+      setState(() {
+        isLoadingAppointment = false;
+        upcomingAppointment = null;
+      });
+      return;
+    }
+
+    try {
+      final now = DateTime.now();
+      final todayString = DateFormat('yyyy-MM-dd').format(now);
+      final currentTime = DateFormat('HH:mm').format(now);
+
+      print('Debug: Fetching appointments for patient ${user.uid}');
+      print('Debug: Current date: $todayString, time: $currentTime');
+
+      // Query for today's confirmed appointments that haven't passed yet
+      final todayQuery = FirebaseFirestore.instance
+          .collection('appointments')
+          .where('patientId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'confirmed')
+          .where('appointmentDate', isEqualTo: todayString)
+          .where('appointmentTime', isGreaterThanOrEqualTo: currentTime)
+          .orderBy('appointmentTime')
+          .limit(1);
+
+      // Query for future confirmed appointments
+      final futureQuery = FirebaseFirestore.instance
+          .collection('appointments')
+          .where('patientId', isEqualTo: user.uid)
+          .where('status', isEqualTo: 'confirmed')
+          .where('appointmentDate', isGreaterThan: todayString)
+          .orderBy('appointmentDate')
+          .orderBy('appointmentTime')
+          .limit(1);
+
+      print('Debug: Executing todayQuery...');
+      final todaySnapshot = await todayQuery.get();
+      print('Debug: todayQuery returned ${todaySnapshot.docs.length} results');
+
+      print('Debug: Executing futureQuery...');
+      final futureSnapshot = await futureQuery.get();
+      print(
+        'Debug: futureQuery returned ${futureSnapshot.docs.length} results',
+      );
+
+      DocumentSnapshot? upcomingDoc;
+
+      if (todaySnapshot.docs.isNotEmpty) {
+        upcomingDoc = todaySnapshot.docs.first;
+      } else if (futureSnapshot.docs.isNotEmpty) {
+        upcomingDoc = futureSnapshot.docs.first;
+      }
+
+      if (upcomingDoc != null) {
+        final appointment = upcomingDoc.data() as Map<String, dynamic>;
+        print('Debug: Found upcoming appointment: ${appointment.toString()}');
+        setState(() {
+          isLoadingAppointment = false;
+          upcomingAppointment = appointment;
+        });
+      } else {
+        print('Debug: No upcoming appointments found');
+        setState(() {
+          isLoadingAppointment = false;
+          upcomingAppointment = null;
+        });
+      }
+    } catch (e) {
+      print('Error fetching appointment: $e');
+      setState(() {
+        isLoadingAppointment = false;
+        upcomingAppointment = null;
+      });
+    }
+  }
+
+  Widget _buildUpcomingAppointment() {
+    if (isLoadingAppointment) {
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (upcomingAppointment == null) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: whiteColor,
+          borderRadius: BorderRadius.circular(25.0),
+        ),
+        child: Center(
+          child: Text(
+            'No upcoming appointments',
+            style: GoogleFonts.poppins(fontSize: 16, color: blackColor),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: primaryColor,
+        borderRadius: BorderRadius.circular(25.0),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Removed the profile image widget here
+              const SizedBox(width: 20.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      upcomingAppointment!['doctorName'] ?? 'Doctor',
+                      style: TextStyle(
+                        color: whiteColor,
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      upcomingAppointment!['specialization'] ??
+                          'Specialization',
+                      style: TextStyle(color: whiteColor, fontSize: 16.0),
+                    ),
+                    if (upcomingAppointment!['complaint'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          'Complaint: ${upcomingAppointment!['complaint']}',
+                          style: TextStyle(color: whiteColor, fontSize: 14.0),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15.0),
+          Container(
+            padding: const EdgeInsets.all(7.0),
+            decoration: BoxDecoration(
+              color: secondaryColor,
+              borderRadius: BorderRadius.circular(25.0),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(1),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: PhosphorIcon(
+                    PhosphorIconsBold.calendarDots,
+                    color: whiteColor,
+                    size: 25.0,
+                  ),
+                ),
+                const SizedBox(width: 5.0),
+                Text(
+                  '${upcomingAppointment!['date']} • ${upcomingAppointment!['time']}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: medium,
+                    color: whiteColor,
+                  ),
+                ),
+                const SizedBox(width: 10.0),
+                Container(
+                  padding: const EdgeInsets.all(1),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: PhosphorIcon(
+                    PhosphorIconsBold.currencyDollar,
+                    color: whiteColor,
+                    size: 25.0,
+                  ),
+                ),
+                const SizedBox(width: 5.0),
+                Text(
+                  upcomingAppointment!['priceDisplay'] ?? '',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: medium,
+                    color: whiteColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +300,6 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
-                mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -57,7 +311,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   Text(
-                    'John Doe',
+                    name,
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: bold,
@@ -74,70 +328,37 @@ class _HomePageState extends State<HomePage> {
                 ),
                 height: 60.0,
                 child: GestureDetector(
-                  onTap: () {
-                    Get.to(SettingPage());
-                  },
+                  onTap: () => Get.to(SettingPage()),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Stack(
-                        children: [
-                          PhosphorIcon(
-                            PhosphorIconsBold.bell,
-                            color: blackColor,
-                            size: 25.0,
-                          ),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      PhosphorIcon(
+                        PhosphorIconsBold.bell,
+                        color: blackColor,
+                        size: 25.0,
                       ),
                       const SizedBox(width: 16.0),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(50),
-                        child: Image.asset(
-                          'assets/profile.png',
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                        ),
+                        child:
+                            profilePhotoBytes != null
+                                ? Image.memory(
+                                  profilePhotoBytes!,
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                )
+                                : Image.asset(
+                                  'assets/profile.png',
+                                  width: 36,
+                                  height: 36,
+                                  fit: BoxFit.cover,
+                                ),
                       ),
                     ],
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          TextFormField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: whiteColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16.0),
-                borderSide: BorderSide.none,
-              ),
-              prefixIcon: Icon(Icons.search, color: secondaryColor),
-              hintText: 'Search Doctor',
-              hintStyle: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: regular,
-                color: secondaryColor,
-              ),
-            ),
           ),
           const SizedBox(height: 20),
           Row(
@@ -152,114 +373,12 @@ class _HomePageState extends State<HomePage> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_forward, size: 30, color: primaryColor),
-                onPressed: () {
-                  Get.to(ChatPage());
-                },
+                onPressed: () => Get.to(ChatPage()),
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-              color: primaryColor,
-              borderRadius: BorderRadius.circular(25.0),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(50),
-                      child: Image.asset(
-                        'assets/doctor.png',
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 20.0),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Dr. Mulyadi Akbar',
-                          style: TextStyle(
-                            color: whiteColor,
-                            fontSize: 20.0,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Dentist',
-                          style: TextStyle(color: whiteColor, fontSize: 16.0),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7.0),
-                      decoration: BoxDecoration(
-                        color: secondaryColor,
-                        borderRadius: BorderRadius.circular(25.0),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(1),
-                            decoration: BoxDecoration(
-                              color: primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: PhosphorIcon(
-                              PhosphorIconsBold.calendarDots,
-                              color: whiteColor,
-                              size: 25.0,
-                            ),
-                          ),
-                          const SizedBox(width: 5.0),
-                          Text(
-                            'Monday, 8:00 AM',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: medium,
-                              color: whiteColor,
-                            ),
-                          ),
-                          const SizedBox(width: 20.0),
-                          Container(
-                            padding: const EdgeInsets.all(1),
-                            decoration: BoxDecoration(
-                              color: primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: PhosphorIcon(
-                              PhosphorIconsBold.clock,
-                              color: whiteColor,
-                              size: 25.0,
-                            ),
-                          ),
-                          const SizedBox(width: 5.0),
-                          Text(
-                            'Monday, 8:00 AM',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: medium,
-                              color: whiteColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          const SizedBox(height: 10),
+          _buildUpcomingAppointment(),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -280,72 +399,67 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            decoration: BoxDecoration(
-              color: whiteColor,
-              border: Border.all(color: primaryColor, width: 2),
-              borderRadius: BorderRadius.circular(25.0),
-            ),
-            child: SizedBox(
-              height: 80,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 7,
-                itemBuilder: (context, index) {
-                  return GestureDetector(
-                    onTap: () => onItemTapped(index),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            days[index],
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color:
-                                  selectedIndex == index
-                                      ? primaryColor
-                                      : blackColor,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            '${index + 1}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color:
-                                  selectedIndex == index
-                                      ? primaryColor
-                                      : blackColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Cardobat(
-            image: 'assets/pill_red.png',
-            name: 'Fluoxetine',
-            shape: 'Mixture',
-            dose: '2 times a day',
-            detailPageRoute: '/detail-medicine',
-          ),
-          const SizedBox(height: 20),
-          Cardobat(
-            image: 'assets/medicine_bottle.png',
-            name: 'Fluoxetine',
-            shape: 'Mixture',
-            dose: '2 times a day',
-            detailPageRoute: '/detail-medicine',
+          FutureBuilder<QuerySnapshot>(
+            future:
+                FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(FirebaseAuth.instance.currentUser!.uid)
+                    .collection('medicines')
+                    .get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return Text(
+                  'No medicine scheduled for today.',
+                  style: GoogleFonts.poppins(color: blackColor),
+                );
+              }
+
+              DateTime today = DateTime.now();
+              final currentUser = FirebaseAuth.instance.currentUser;
+
+              List<DocumentSnapshot> todayMedicines =
+                  snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    DateTime? startDate = DateTime.tryParse(
+                      data['startDate'] ?? '',
+                    );
+                    DateTime? endDate = DateTime.tryParse(
+                      data['endDate'] ?? '',
+                    );
+
+                    if (startDate == null || endDate == null) return false;
+
+                    return !today.isBefore(startDate) &&
+                        !today.isAfter(endDate);
+                  }).toList();
+
+              if (todayMedicines.isEmpty) {
+                return Text(
+                  'No medicine scheduled for today.',
+                  style: GoogleFonts.poppins(color: blackColor),
+                );
+              }
+
+              return Column(
+                children:
+                    todayMedicines.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      data['id'] = doc.id;
+                      if (currentUser != null) {
+                        data['uid'] = currentUser.uid;
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Cardobat(medicineData: data),
+                      );
+                    }).toList(),
+              );
+            },
           ),
           const SizedBox(height: 20),
           Row(
@@ -368,20 +482,42 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 180,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 3,
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10.0),
-                  child: CardNews(
-                    image: 'assets/news1.png',
-                    subtitle: 'lorem ipsum dolor sit amet perci pesidasius',
-                    onTap: () {
-                      Get.to(() => NewsDetailPage());
-                    },
-                  ),
+            height: 250,
+            child: StreamBuilder<QuerySnapshot>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('news')
+                      .orderBy('date', descending: true)
+                      .limit(5)
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text('No recent articles found.'));
+                }
+
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    DocumentSnapshot document = snapshot.data!.docs[index];
+                    String articleId = document.id;
+
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right:
+                            index == snapshot.data!.docs.length - 1 ? 0 : 10.0,
+                      ),
+                      child: CardNews(id: articleId),
+                    );
+                  },
                 );
               },
             ),
@@ -422,11 +558,10 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: CustomBottomNavigationBar(
         onItemTapped: (index) {
-          setState(() {
-            selectedIndexpages = index;
-          });
+          setState(() => selectedIndexpages = index);
         },
         currentIndex: 0,
+        uid: FirebaseAuth.instance.currentUser?.uid ?? '',
       ),
     );
   }
