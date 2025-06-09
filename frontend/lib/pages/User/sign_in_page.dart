@@ -7,6 +7,10 @@ import 'package:frontend/pages/User/home_page.dart';
 import 'package:frontend/pages/Doctor only/home_page_doctor.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:frontend/pages/User/forget_password_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:frontend/shared/notification_service.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 class SignInController extends GetxController {
   var obscureText = true.obs;
@@ -33,13 +37,10 @@ class _SignInPageState extends State<SignInPage> {
     if (value == null || value.isEmpty) {
       return 'Masukkan email anda';
     }
-
-    // Basic email regex pattern
     final RegExp emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
     if (!emailRegex.hasMatch(value)) {
       return 'Masukkan email yang benar';
     }
-
     return null;
   }
 
@@ -47,13 +48,78 @@ class _SignInPageState extends State<SignInPage> {
     if (value == null || value.isEmpty) {
       return 'Masukkan password anda';
     }
-    if (value.length < 8) {
-      return 'Password anda harus minimal 8 karakter';
-    }
-    if (value.length > 20) {
-      return 'Password anda harus kurang dari 20 karakter';
-    }
     return null;
+  }
+
+  void handleLogin() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
+
+      String uid = userCredential.user!.uid;
+
+      // Initialize reminder system for the user
+      await ReminderSystem.to.initializeForUser(uid);
+
+      // Ambil data user dari 'users' collection
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (userDoc.exists) {
+        // Update lastLogin dan updatedAt
+        await FirebaseFirestore.instance.collection('users').doc(uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+
+        // Ambil seluruh data user sebagai Map
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+
+        // Ambil role
+        String role = userData['role'] ?? 'user';
+
+        // Navigasi berdasarkan role
+        if (role == 'doctor') {
+          Get.offAll(() => HomePageDoctor());
+        } else {
+          Get.offAll(() => HomePage());
+        }
+        return;
+      } else {
+        Get.snackbar(
+          'Login Gagal',
+          'Data pengguna tidak ditemukan di sistem.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.redAccent,
+          colorText: Colors.white,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'Pengguna tidak ditemukan.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Password salah.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'Email tidak valid.';
+          break;
+        default:
+          errorMessage = 'Terjadi kesalahan. Silakan coba lagi.';
+      }
+
+      Get.snackbar(
+        'Login Gagal',
+        errorMessage,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+    }
   }
 
   @override
@@ -89,7 +155,6 @@ class _SignInPageState extends State<SignInPage> {
               ],
             ),
           ),
-
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -98,11 +163,9 @@ class _SignInPageState extends State<SignInPage> {
               height: MediaQuery.of(context).size.height * 0.75,
               decoration: BoxDecoration(
                 color: lightGreyColor,
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(40.0),
                   topRight: Radius.circular(40.0),
-                  bottomLeft: Radius.zero,
-                  bottomRight: Radius.zero,
                 ),
               ),
               child: SingleChildScrollView(
@@ -143,6 +206,7 @@ class _SignInPageState extends State<SignInPage> {
                       Obx(
                         () => TextFormField(
                           obscureText: controller.obscureText.value,
+                          controller: passwordController,
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: whiteColor,
@@ -170,22 +234,6 @@ class _SignInPageState extends State<SignInPage> {
                           validator: validatePassword,
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            Get.to(ForgetPasswordPage());
-                          },
-                          child: Text(
-                            'Forgot Password?',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -193,12 +241,7 @@ class _SignInPageState extends State<SignInPage> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              final email = emailController.text.toLowerCase();
-                              if (email.contains('doctor')) {
-                                Get.to(() => HomePageDoctor());
-                              } else {
-                                Get.to(() => HomePage());
-                              }
+                              handleLogin();
                             }
                           },
                           style: ElevatedButton.styleFrom(

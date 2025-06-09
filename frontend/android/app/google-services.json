@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "700378163107",
+    "project_id": "sehatsajaweb",
+    "storage_bucket": "sehatsajaweb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:700378163107:android:d93222a47e8e421e725c16",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5ldUaUUFDGuWF023K167ZkIAO1ezFYEQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

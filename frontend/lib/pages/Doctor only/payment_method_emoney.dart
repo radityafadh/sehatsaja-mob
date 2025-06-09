@@ -36,7 +36,6 @@ class PaymentMethodEmoneyPage extends StatelessWidget {
             ),
           ),
           CardBankSimple(image: 'bank_bca', type: 'Virtual Account'),
-          CardBankSimple(image: 'bank_bni', type: 'Virtual Account'),
           CardBankSimple(image: 'bank_mandiri', type: 'Virtual Account'),
           CardBankSimple(image: 'bank_bri', type: 'Virtual Account'),
           const SizedBox(height: 20),

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,9 +9,64 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'forget_password_page.dart';
 import 'package:frontend/widgets/dialog_signout.dart';
 import 'package:frontend/pages/User/edit_profile_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:frontend/pages/User/setting_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  String name = '';
+  String email = '';
+  String birthDate = '';
+  String phoneNumber = '';
+  String photoUrl = '';
+  Uint8List? photoBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserData();
+  }
+
+  Future<void> fetchUserData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        name = data['name'] ?? '';
+        email = data['email'] ?? '';
+        birthDate = data['birthDate'] ?? '';
+        phoneNumber = (data['phone'] ?? '').toString();
+        photoUrl = data['photoUrl'] ?? '';
+
+        photoBytes = null;
+        if (photoUrl.isNotEmpty) {
+          try {
+            // Handle base64 with data URL prefix
+            if (photoUrl.startsWith('data:image')) {
+              final base64Str = photoUrl.split(',').last;
+              photoBytes = base64Decode(base64Str);
+            } else {
+              // Try to decode directly (for raw base64)
+              photoBytes = base64Decode(photoUrl);
+            }
+          } catch (e) {
+            photoBytes = null; // Fallback to network or asset
+          }
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +76,18 @@ class ProfilePage extends StatelessWidget {
           '',
           style: GoogleFonts.poppins(
             fontSize: 16,
-            fontWeight: bold,
+            fontWeight: FontWeight.bold,
             color: blackColor,
           ),
         ),
         centerTitle: true,
         backgroundColor: primaryColor,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: blackColor),
+          onPressed: () {
+            Get.to(SettingPage());
+          },
+        ),
       ),
       resizeToAvoidBottomInset: false,
       backgroundColor: primaryColor,
@@ -37,11 +101,9 @@ class ProfilePage extends StatelessWidget {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: lightGreyColor,
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(40.0),
                   topRight: Radius.circular(40.0),
-                  bottomLeft: Radius.zero,
-                  bottomRight: Radius.zero,
                 ),
               ),
               child: SingleChildScrollView(
@@ -49,135 +111,13 @@ class ProfilePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 40),
-                    Text(
-                      'First name',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: bold,
-                        color: greyColor,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        'John',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: bold,
-                          color: blackColor,
-                        ),
-                      ),
-                    ),
+                    _buildProfileField('Name', name),
                     const SizedBox(height: 10),
-                    Text(
-                      'Last name',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: bold,
-                        color: greyColor,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        'Doe',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: bold,
-                          color: blackColor,
-                        ),
-                      ),
-                    ),
+                    _buildProfileField('Email', email),
                     const SizedBox(height: 10),
-                    Text(
-                      'Email',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: bold,
-                        color: greyColor,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        'JohnDoe@gmail.com',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: bold,
-                          color: blackColor,
-                        ),
-                      ),
-                    ),
+                    _buildProfileField('Birth', birthDate),
                     const SizedBox(height: 10),
-                    Text(
-                      'Birth',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: bold,
-                        color: greyColor,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        '12 January 2002',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: bold,
-                          color: blackColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Gender',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: bold,
-                        color: greyColor,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(5.0),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Text(
-                        'Male',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: bold,
-                          color: blackColor,
-                        ),
-                      ),
-                    ),
+                    _buildProfileField('Phone Number', phoneNumber),
                     const SizedBox(height: 30),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -201,7 +141,7 @@ class ProfilePage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Spacer(),
+                        const Spacer(),
                         ElevatedButton(
                           onPressed: () {
                             Get.to(ForgetPasswordPage());
@@ -223,6 +163,7 @@ class ProfilePage extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -258,16 +199,82 @@ class ProfilePage extends StatelessWidget {
             top: MediaQuery.of(context).size.height * -0.001,
             left: MediaQuery.of(context).size.width * 0.4,
             child: ClipRRect(
-              child: Image.asset(
-                'assets/profile.png',
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
+              borderRadius: BorderRadius.circular(50),
+              child: Builder(
+                builder: (context) {
+                  if (photoBytes != null) {
+                    // tampilkan base64 decode image
+                    return Image.memory(
+                      photoBytes!,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    );
+                  } else if (photoUrl.isNotEmpty) {
+                    // tampilkan url image
+                    return Image.network(
+                      photoUrl,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // fallback ke asset kalau gagal load url
+                        return Image.asset(
+                          'assets/profile.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        );
+                      },
+                    );
+                  } else {
+                    // fallback default asset
+                    return Image.asset(
+                      'assets/profile.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    );
+                  }
+                },
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileField(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: bold,
+            color: greyColor,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(5.0),
+          decoration: BoxDecoration(
+            color: whiteColor,
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Text(
+            value.isNotEmpty ? value : '...',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: bold,
+              color: blackColor,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

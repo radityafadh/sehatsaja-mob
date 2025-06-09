@@ -4,450 +4,808 @@ import 'package:get/get.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:frontend/widgets/containerdetail.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:frontend/widgets/experiencecard.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'package:frontend/pages/User/detail_payment_page.dart';
+import 'package:frontend/shared/notification_service.dart';
 
 class DetailDoctorController extends GetxController {
+  final String uid;
   final RxString _currentState = 'Schedule'.obs;
-  final RxInt _selectedIndex = 0.obs;
-  final RxString selectedPeriod = 'Morning'.obs;
   final RxString selectedTime = ''.obs;
+  final RxString doctorName = ''.obs;
+  final RxInt doctorPrice = 0.obs;
+  final RxMap<String, dynamic> dailySchedules = <String, dynamic>{}.obs;
+  final RxString selectedDate =
+      DateFormat('yyyy-MM-dd').format(DateTime.now()).obs;
+  final RxList<Map<String, dynamic>> appointments =
+      <Map<String, dynamic>>[].obs;
+  final RxBool isLoading = true.obs;
+  final specialization = ''.obs;
+  final TextEditingController specializationController =
+      TextEditingController();
+  final RxString photoUrl = ''.obs;
+  final RxBool isBooking = false.obs;
+  final RxString appointmentId = ''.obs;
+  final RxString description = 'tes'.obs;
+  final RxString licenseNumber = '12412841251'.obs;
+  final RxInt patientCount = 0.obs;
+
+  DetailDoctorController({required this.uid});
 
   String get currentState => _currentState.value;
-  int get selectedIndex => _selectedIndex.value;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadDoctorData();
+    _loadAppointments();
+  }
+
+  Future<void> _loadDoctorData() async {
+    try {
+      isLoading.value = true;
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      if (doc.exists) {
+        updateDoctorData(doc.data()!);
+      } else {
+        throw Exception('Doctor document does not exist');
+      }
+    } catch (e) {
+      debugPrint('Error loading doctor data: $e');
+      Get.snackbar('Error', 'Failed to load doctor data');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _loadAppointments() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('appointments')
+              .where('doctorId', isEqualTo: uid)
+              .get();
+
+      appointments.assignAll(
+        snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList(),
+      );
+
+      // Count completed/confirmed appointments
+      patientCount.value =
+          snapshot.docs
+              .where(
+                (doc) => ['confirmed', 'completed'].contains(doc['status']),
+              )
+              .length;
+    } catch (e) {
+      debugPrint('Error loading appointments: $e');
+      Get.snackbar('Error', 'Failed to load appointments');
+    }
+  }
 
   void changeState(String state) {
-    _currentState.value = state;
+    if (_currentState.value != state) {
+      _currentState.value = state;
+    }
   }
 
-  void onItemTapped(int index) {
-    _selectedIndex.value = index;
+  void updateDoctorData(Map<String, dynamic> data) {
+    doctorName.value = data['name']?.toString() ?? 'No Name';
+    doctorPrice.value = (data['price'] as num?)?.toInt() ?? 0;
+    specialization.value = data['specialization']?.toString() ?? '';
+    specializationController.text = specialization.value;
+    photoUrl.value = data['photoUrl']?.toString() ?? '';
+    description.value =
+        data['description']?.toString() ?? 'No description available';
+    licenseNumber.value =
+        data['licenseNumber']?.toString() ?? 'No license number';
+
+    dailySchedules.clear();
+    if (data['dailySchedules'] is Map) {
+      dailySchedules.assignAll(
+        Map<String, dynamic>.from(data['dailySchedules']),
+      );
+    }
   }
 
-  RxString get currentStateRx => _currentState;
-  RxInt get selectedIndexRx => _selectedIndex;
+  List<String> getAvailableDates() {
+    final now = DateTime.now();
+    final currentDate = DateFormat('yyyy-MM-dd').format(now);
+
+    return dailySchedules.keys.where((date) {
+        // Filter out past dates
+        final dateTime = DateTime.parse(date);
+        if (dateTime.isBefore(DateTime(now.year, now.month, now.day))) {
+          return false;
+        }
+
+        // Check if the date has any available time slots
+        final timeRanges = getAvailableTimeRanges(date);
+        return timeRanges.isNotEmpty;
+      }).toList()
+      ..sort();
+  }
+
+  List<Map<String, String>> getAvailableTimeRanges(String date) {
+    if (!dailySchedules.containsKey(date)) return [];
+
+    final scheduleData = dailySchedules[date];
+    if (scheduleData is! List) return [];
+
+    final now = DateTime.now();
+    final isToday = date == DateFormat('yyyy-MM-dd').format(now);
+
+    // Get all booked slots for this date
+    final bookedSlots =
+        appointments
+            .where((appt) => appt['date'] == date)
+            .map((appt) => appt['time'] as String)
+            .toList();
+
+    return (scheduleData as List)
+        .whereType<String>()
+        .where((timeString) {
+          // Check if time is already booked
+          if (bookedSlots.contains(timeString)) return false;
+
+          // For today's date, check if time has passed
+          if (isToday) {
+            final timeParts = timeString.split(':');
+            final slotTime = DateTime(
+              now.year,
+              now.month,
+              now.day,
+              int.parse(timeParts[0]),
+              int.parse(timeParts[1]),
+            );
+            return slotTime.isAfter(now);
+          }
+          return true;
+        })
+        .map((timeString) {
+          // Format display as "14:20-14:50" but store original "14:20"
+          final startTime = timeString;
+          final start = DateTime.parse('2000-01-01 $startTime:00');
+          final end = start.add(const Duration(minutes: 30));
+          final endTime = DateFormat('HH:mm').format(end);
+
+          return {
+            'start': startTime,
+            'end': endTime,
+            'display': '$startTime-$endTime',
+          };
+        })
+        .toList();
+  }
+
+  void selectTimeRange(String range) {
+    selectedTime.value = range;
+  }
+
+  Future<String> bookAppointment({
+    required String date,
+    required String time,
+    required String complaint,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      if (complaint.isEmpty) {
+        throw Exception('Complaint cannot be empty');
+      }
+
+      final appointmentData = {
+        'complaint': complaint,
+        'createdAt': FieldValue.serverTimestamp(),
+        'appointmentDate': date,
+        'doctorId': uid,
+        'doctorName': doctorName.value,
+        'patientId': user.uid,
+        'patientName': user.displayName ?? 'Guest',
+        'paymentMethod': '',
+        'patientPhone': user.phoneNumber,
+        'patientEmail': user.email,
+        'price': doctorPrice.value,
+        'priceDisplay': 'Rp ${NumberFormat('#,###').format(doctorPrice.value)}',
+        'doctorSpecialization': specializationController.text,
+        'status': 'waiting',
+        'appointmentTime': time,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      final docRef = await FirebaseFirestore.instance
+          .collection('appointments')
+          .add(appointmentData);
+
+      await _loadAppointments();
+      appointmentId.value = docRef.id;
+
+      Get.snackbar('Success', 'Appointment booked successfully!');
+      return docRef.id;
+    } catch (e) {
+      debugPrint('Error booking appointment: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to book appointment: ${e.toString().replaceAll('Exception: ', '')}',
+      );
+      rethrow;
+    }
+  }
 }
 
-List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-Map<String, List<String>> time_slots = {
-  "Morning": ["07:00", "07:30", "08:00", "08:30", "09:00", "09:30"],
-  "Afternoon": ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30"],
-  "Evening": ["13:00", "13:30", "14:00", "14:30", "15:00", "15:30"],
-  "Night": ["16:00", "16:30", "17:00", "17:30", "18:00", "18:30"],
-};
-
-class DetailDoctorPage extends StatelessWidget {
-  const DetailDoctorPage({Key? key}) : super(key: key);
+class DetailDoctorPage extends GetView<DetailDoctorController> {
+  DetailDoctorPage({Key? key, required String uid}) : super(key: key) {
+    Get.put(DetailDoctorController(uid: uid));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final DetailDoctorController controller = Get.put(DetailDoctorController());
-
     return Scaffold(
       backgroundColor: lightGreyColor,
       appBar: AppBar(
-        title: Text('', style: GoogleFonts.poppins(color: blackColor)),
         backgroundColor: lightGreyColor,
         elevation: 0,
+        title: Text('', style: GoogleFonts.poppins(color: blackColor)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Get.back(),
+        ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: Image.asset(
-                          'assets/doctor.png',
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  children: [
+                    _buildProfileHeader(controller),
+                    _buildStateButtons(controller),
+                    _buildContentSection(controller, context),
+                    _buildBookButton(controller, context),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  Widget _buildProfileHeader(DetailDoctorController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 16),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Obx(() {
+                final photoUrl = controller.photoUrl.value;
+                final isBase64 = photoUrl.contains('base64,');
+                final imageData = isBase64 ? photoUrl.split(',')[1] : photoUrl;
+
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child:
+                      isBase64 && imageData.isNotEmpty
+                          ? Image.memory(
+                            base64Decode(imageData),
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                          )
+                          : imageData.isNotEmpty
+                          ? Image.network(
+                            imageData,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                          )
+                          : _buildDefaultAvatar(),
+                );
+              }),
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Obx(
+                      () => Text(
+                        controller.doctorName.value,
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: bold,
                         ),
                       ),
-                      const SizedBox(width: 10.0),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Dr. Mulyadi Akbar',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color: blackColor,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Icon(Icons.star, color: primaryColor, size: 16.0),
-                              Text(
-                                '4.9 (129 reviews)',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  fontWeight: regular,
-                                  color: blackColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            'Dentist',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: regular,
-                              color: blackColor,
-                            ),
-                          ),
-                        ],
+                    ),
+                    const SizedBox(height: 4),
+                    Obx(
+                      () => Text(
+                        controller.specialization.value,
+                        style: GoogleFonts.poppins(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20.0),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Obx(
+                () => ContainerDetail(
+                  icon: PhosphorIconsBold.person,
+                  name: '${controller.patientCount.value}+',
+                  detail: 'Patients',
+                ),
+              ),
+              ContainerDetail(
+                icon: PhosphorIconsBold.identificationCard,
+                name: 'License',
+                detail: 'Verified',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Obx(
+            () => Text(
+              "Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: bold,
+                color: primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      width: 100,
+      height: 100,
+      color: Colors.grey[200],
+      child: Icon(PhosphorIconsBold.user, size: 40, color: Colors.grey[400]),
+    );
+  }
+
+  Widget _buildStateButtons(DetailDoctorController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children:
+            ['Schedule', 'Details'].map((state) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Obx(
+                  () => ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          controller.currentState == state
+                              ? primaryColor
+                              : whiteColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => controller.changeState(state),
+                    child: Text(
+                      state,
+                      style: GoogleFonts.poppins(
+                        color:
+                            controller.currentState == state
+                                ? whiteColor
+                                : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildContentSection(
+    DetailDoctorController controller,
+    BuildContext context,
+  ) {
+    return Obx(() {
+      if (controller.currentState == 'Details') {
+        return _buildDetailsContent(controller);
+      } else {
+        return _buildScheduleContent(controller, context);
+      }
+    });
+  }
+
+  Widget _buildDetailsContent(DetailDoctorController controller) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            elevation: 2,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        PhosphorIconsBold.fileText,
+                        size: 20,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Description',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Transform.scale(
-                        scale: 0.8,
-                        child: ContainerDetail(
-                          icon: PhosphorIconsBold.person,
-                          name: '152+',
-                          detail: 'Patients',
-                        ),
-                      ),
-                      Transform.scale(
-                        scale: 0.8,
-                        child: ContainerDetail(
-                          icon: PhosphorIconsBold.medal,
-                          name: '3 Yr+',
-                          detail: 'Experience',
-                        ),
-                      ),
-                      Transform.scale(
-                        scale: 0.8,
-                        child: ContainerDetail(
-                          icon: PhosphorIconsBold.star,
-                          name: '4.9',
-                          detail: 'Rating',
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 8),
+                  Obx(
+                    () => Text(
+                      controller.description.value,
+                      style: GoogleFonts.poppins(fontSize: 14),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children:
-                  ['Schedule', 'About', 'Experience'].map((state) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 5.0),
-                      child: Obx(
-                        () => ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                controller.currentStateRx.value == state
-                                    ? primaryColor
-                                    : lightGreyColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                          ),
-                          onPressed: () => controller.changeState(state),
-                          child: Text(
-                            state,
-                            style: GoogleFonts.poppins(
-                              color:
-                                  controller.currentStateRx.value == state
-                                      ? whiteColor
-                                      : blackColor,
-                              fontWeight: bold,
-                              fontSize: 16.0,
-                            ),
-                          ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 2,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        PhosphorIconsBold.identificationCard,
+                        size: 20,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'License Number',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Obx(
+                    () => Text(
+                      controller.licenseNumber.value,
+                      style: GoogleFonts.poppins(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleContent(
+    DetailDoctorController controller,
+    BuildContext context,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            'Available Dates',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 60,
+          child: Obx(() {
+            final availableDates = controller.getAvailableDates();
+            if (availableDates.isEmpty) {
+              return Center(
+                child: Text(
+                  'No available dates',
+                  style: GoogleFonts.poppins(color: Colors.grey),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemCount: availableDates.length,
+              itemBuilder: (context, index) {
+                final date = availableDates[index];
+                return Obx(
+                  () => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ChoiceChip(
+                      label: Text(
+                        DateFormat('MMM dd').format(DateTime.parse(date)),
+                        style: GoogleFonts.poppins(
+                          color:
+                              controller.selectedDate.value == date
+                                  ? whiteColor
+                                  : Colors.black87,
+                        ),
+                      ),
+                      selected: controller.selectedDate.value == date,
+                      onSelected: (selected) {
+                        if (selected) {
+                          controller.selectedDate.value = date;
+                          controller.selectedTime.value = '';
+                        }
+                      },
+                      selectedColor: primaryColor,
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text(
+            'Available Time Slots',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Obx(() {
+          final timeRanges = controller.getAvailableTimeRanges(
+            controller.selectedDate.value,
+          );
+
+          if (timeRanges.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'No available time slots for selected date',
+                style: GoogleFonts.poppins(color: Colors.grey),
+              ),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children:
+                  timeRanges.map((range) {
+                    return ChoiceChip(
+                      label: Text(range['display']!),
+                      selected: controller.selectedTime.value == range['start'],
+                      onSelected: (selected) {
+                        if (selected) {
+                          controller.selectTimeRange(range['start']!);
+                        }
+                      },
                     );
                   }).toList(),
             ),
+          );
+        }),
+      ],
+    );
+  }
 
-            const SizedBox(height: 20.0),
-            Expanded(
-              child: Obx(() {
-                switch (controller.currentStateRx.value) {
-                  case 'Schedule':
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: ListView(
-                        children: [
-                          Text(
-                            'Date',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color: blackColor,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: whiteColor,
-                              border: Border.all(color: primaryColor, width: 2),
-                              borderRadius: BorderRadius.circular(25.0),
-                            ),
-                            child: SizedBox(
-                              height: 80,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: 7,
-                                itemBuilder: (context, index) {
-                                  return Obx(
-                                    () => GestureDetector(
-                                      onTap:
-                                          () => controller.onItemTapped(index),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10.0,
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              days[index],
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 16,
-                                                fontWeight: bold,
-                                                color:
-                                                    controller
-                                                                .selectedIndexRx
-                                                                .value ==
-                                                            index
-                                                        ? primaryColor
-                                                        : blackColor,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Text(
-                                              '${index + 1}',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 16,
-                                                fontWeight: bold,
-                                                color:
-                                                    controller
-                                                                .selectedIndexRx
-                                                                .value ==
-                                                            index
-                                                        ? primaryColor
-                                                        : blackColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Select Time Period',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color: blackColor,
-                            ),
-                          ),
-                          Obx(
-                            () => GridView.count(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 10,
-                              crossAxisSpacing: 10,
-                              childAspectRatio: 3,
-                              children:
-                                  time_slots.keys.map((period) {
-                                    return ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            controller.selectedPeriod.value ==
-                                                    period
-                                                ? primaryColor
-                                                : whiteColor,
-                                        foregroundColor:
-                                            controller.selectedPeriod.value ==
-                                                    period
-                                                ? whiteColor
-                                                : blackColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                        ),
-                                      ),
-                                      onPressed: () {
-                                        controller.selectedPeriod.value =
-                                            period;
-                                      },
-                                      child: Text(period),
-                                    );
-                                  }).toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Available Times',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: bold,
-                              color: blackColor,
-                            ),
-                          ),
-                          Obx(
-                            () => GridView.count(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              crossAxisCount: 3,
-                              mainAxisSpacing: 10,
-                              crossAxisSpacing: 10,
-                              childAspectRatio: 2.5,
-                              children:
-                                  time_slots[controller.selectedPeriod.value]!
-                                      .map(
-                                        (time) => ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                controller.selectedTime.value ==
-                                                        time
-                                                    ? primaryColor
-                                                    : whiteColor,
-                                            foregroundColor:
-                                                controller.selectedTime.value ==
-                                                        time
-                                                    ? whiteColor
-                                                    : blackColor,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                          onPressed: () {
-                                            controller.selectedTime.value =
-                                                time;
-                                          },
-                                          child: Text(time),
-                                        ),
-                                      )
-                                      .toList(),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          Center(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Get.to(() => DetailPaymentPage());
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 40.0,
-                                  vertical: 16.0,
-                                ),
-                              ),
-                              child: Text(
-                                'Book Now',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 20,
-                                  fontWeight: bold,
-                                  color: whiteColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  case 'About':
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 20.0),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Dr. Mulyadi Akbar is a dedicated and experienced dentist committed to providing top-quality dental care. With a strong passion for oral health, he specializes in preventive, restorative, and cosmetic dentistry, ensuring patients receive the best possible treatment tailored to their needs. Dr. Mulyadi believes in a patient-centered approach, emphasizing comfort, education, and personalized care. His expertise, combined with a warm and professional demeanor, makes every visit a positive experience. Whether its routine check-ups, advanced procedures, or smile makeovers, Dr. Mulyadi strives to help patients achieve optimal dental health and confidence in their smiles.',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: regular,
-                            color: blackColor,
-                          ),
-                          textAlign: TextAlign.justify,
-                        ),
-                      ),
-                    );
-                  case 'Experience':
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            ExperienceCard(
-                              role: 'Dentist',
-                              place: 'Hospital A',
-                              time: '2022-2023',
-                              detail: 'Specialist in dental surgery',
-                            ),
-                            SizedBox(height: 16),
-                            ExperienceCard(
-                              role: 'Dentist',
-                              place: 'Hospital B',
-                              time: '2020-2022',
-                              detail: 'Specialist in dental surgery',
-                            ),
-                            SizedBox(height: 16),
-                            ExperienceCard(
-                              role: 'Dentist',
-                              place: 'Dental Clinic',
-                              time: '2018-2020',
-                              detail: 'Specialist in dental surgery',
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  default:
-                    return Center(
-                      child: Text(
-                        'Select an option.',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: regular,
-                          color: blackColor,
-                        ),
-                      ),
-                    );
-                }
-              }),
+  Widget _buildBookButton(
+    DetailDoctorController controller,
+    BuildContext context,
+  ) {
+    return Obx(() {
+      if (controller.currentState == 'Schedule' &&
+          controller.selectedTime.isNotEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () => _showBookingDialog(controller, context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-          ],
+            child: Text(
+              "Book Now",
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                color: whiteColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }
+      return const SizedBox();
+    });
+  }
+
+  void _showBookingDialog(
+    DetailDoctorController controller,
+    BuildContext context,
+  ) {
+    final complaintController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    Get.dialog(
+      AlertDialog(
+        title: Text(
+          'Confirm Appointment',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Doctor: ${controller.doctorName.value}',
+                  style: GoogleFonts.poppins(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Date: ${DateFormat('MMM dd, yyyy').format(DateTime.parse(controller.selectedDate.value))}',
+                  style: GoogleFonts.poppins(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Time: ${controller.selectedTime.value} - ${DateFormat('HH:mm').format(DateTime.parse('2000-01-01 ${controller.selectedTime.value}:00').add(const Duration(minutes: 30)))}',
+                  style: GoogleFonts.poppins(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Price: Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}',
+                  style: GoogleFonts.poppins(),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: complaintController,
+                  decoration: InputDecoration(
+                    labelText: 'Complaint/Reason',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                  maxLines: 3,
+                  validator:
+                      (value) =>
+                          value?.isEmpty ?? true
+                              ? 'Please describe your complaint'
+                              : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          Obx(
+            () =>
+                controller.isBooking.value
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                      ),
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          controller.isBooking.value = true;
+                          try {
+                            // Get the current user ID
+                            final userId =
+                                FirebaseAuth.instance.currentUser?.uid;
+
+                            // Book appointment
+                            final appointmentId = await controller
+                                .bookAppointment(
+                                  date: controller.selectedDate.value,
+                                  time: controller.selectedTime.value,
+                                  complaint: complaintController.text,
+                                );
+
+                            if (userId != null) {
+                              await ReminderSystem.to.manualSync(userId);
+                            }
+
+                            // Navigate to payment page
+                            Get.back(); // Close the dialog
+                            Get.to(
+                              () => DetailPaymentPage(
+                                appointmentId: appointmentId,
+                              ),
+                            );
+                          } finally {
+                            controller.isBooking.value = false;
+                          }
+                        }
+                      },
+
+                      child: Text(
+                        'Confirm Booking',
+                        style: GoogleFonts.poppins(color: whiteColor),
+                      ),
+                    ),
+          ),
+        ],
       ),
     );
   }
