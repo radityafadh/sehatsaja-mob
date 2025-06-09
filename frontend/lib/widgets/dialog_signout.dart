@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend/shared/theme.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/User/sign_in_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:frontend/shared/notification_service.dart';
 
 class SignoutDialog extends StatelessWidget {
   const SignoutDialog({Key? key}) : super(key: key);
@@ -45,9 +47,11 @@ class SignoutDialog extends StatelessWidget {
               ),
               // "Ya" Button
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  await ReminderSystem.to.logout();
+                  await FirebaseAuth.instance.signOut();
                   Navigator.of(context).pop();
-                  Get.to(() => SignInPage());
+                  Get.offAll(() => SignInPage());
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,

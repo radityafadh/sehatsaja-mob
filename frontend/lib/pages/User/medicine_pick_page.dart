@@ -6,6 +6,9 @@ import 'package:frontend/widgets/cardobat.dart';
 import 'package:frontend/widgets/dropdown.dart';
 import 'package:get/get.dart';
 import 'package:frontend/pages/User/medicine_add_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class MedicinePickPage extends StatefulWidget {
   const MedicinePickPage({Key? key}) : super(key: key);
@@ -17,12 +20,9 @@ class MedicinePickPage extends StatefulWidget {
 class _MedicinePickState extends State<MedicinePickPage> {
   int selectedIndexpages = 1;
   int? selectedIndex;
-
-  void onItemTapped(int index) {
-    setState(() {
-      selectedIndex = index;
-    });
-  }
+  int selectedMonthIndex = DateTime.now().month - 1;
+  late List<DateTime> daysInMonth;
+  late ScrollController _scrollController;
 
   final List<String> months = [
     'Januari',
@@ -39,10 +39,48 @@ class _MedicinePickState extends State<MedicinePickPage> {
     'Desember',
   ];
 
-  final List<String> days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  void onItemTapped(int index) {
+    setState(() {
+      selectedIndex = index;
+    });
+  }
+
+  void generateDaysInMonth(int year, int month) {
+    final lastDay = DateTime(year, month + 1, 0).day;
+    daysInMonth = List.generate(
+      lastDay,
+      (index) => DateTime(year, month, index + 1),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    final now = DateTime.now();
+    generateDaysInMonth(now.year, now.month);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final todayIndex = now.day - 1;
+      _scrollController.animateTo(
+        todayIndex * 70.0,
+        duration: Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+      setState(() {
+        selectedIndex = todayIndex;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final selectedDate =
+        (selectedIndex != null && selectedIndex! < daysInMonth.length)
+            ? daysInMonth[selectedIndex!]
+            : DateTime.now();
+
     return Scaffold(
       backgroundColor: primaryColor,
       appBar: AppBar(
@@ -66,7 +104,19 @@ class _MedicinePickState extends State<MedicinePickPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                CustomDropdown(items: months),
+                CustomDropdown(
+                  items: months,
+                  value: months[selectedMonthIndex],
+                  onChanged: (value) {
+                    final index = months.indexOf(value);
+                    setState(() {
+                      selectedMonthIndex = index;
+                      generateDaysInMonth(DateTime.now().year, index + 1);
+                      selectedIndex = 0;
+                      _scrollController.jumpTo(0);
+                    });
+                  },
+                ),
                 const SizedBox(height: 10),
               ],
             ),
@@ -77,40 +127,47 @@ class _MedicinePickState extends State<MedicinePickPage> {
               border: Border.all(color: primaryColor, width: 2),
             ),
             child: SizedBox(
-              height: 60,
+              height: 70,
               width: double.infinity,
               child: ListView.builder(
+                controller: _scrollController,
                 scrollDirection: Axis.horizontal,
-                itemCount: days.length,
+                itemCount: daysInMonth.length,
                 itemBuilder: (context, index) {
+                  final date = daysInMonth[index];
+                  final isSelected = selectedIndex == index;
+
                   return GestureDetector(
                     onTap: () => onItemTapped(index),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                    child: Container(
+                      width: 60,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected ? primaryColor : whiteColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryColor),
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            days[index],
+                            DateFormat.E().format(date),
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: bold,
-                              color:
-                                  selectedIndex == index
-                                      ? primaryColor
-                                      : blackColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected ? whiteColor : primaryColor,
                             ),
                           ),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 4),
                           Text(
-                            '${index + 1}',
+                            date.day.toString(),
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               fontWeight: bold,
-                              color:
-                                  selectedIndex == index
-                                      ? primaryColor
-                                      : blackColor,
+                              color: isSelected ? whiteColor : primaryColor,
                             ),
                           ),
                         ],
@@ -124,30 +181,74 @@ class _MedicinePickState extends State<MedicinePickPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(color: lightGreyColor),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 20,
-                ),
-                child: Column(
-                  children: const [
-                    Cardobat(
-                      image: 'assets/pill_red.png',
-                      name: 'Fluoxetine',
-                      shape: 'Mixture',
-                      dose: '2 times a day',
-                      detailPageRoute: '/detail-medicine',
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(currentUser?.uid)
+                        .collection('medicines')
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Terjadi kesalahan'));
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs =
+                      snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final startDate =
+                            DateTime.parse(data['startDate']).toLocal();
+                        final endDate =
+                            DateTime.parse(data['endDate']).toLocal();
+
+                        return selectedDate.isAfter(
+                              startDate.subtract(Duration(days: 1)),
+                            ) &&
+                            selectedDate.isBefore(
+                              endDate.add(Duration(days: 0)),
+                            );
+                      }).toList();
+
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'Tidak ada obat untuk tanggal ini',
+                        style: GoogleFonts.poppins(fontSize: 16),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 30,
+                      vertical: 20,
                     ),
-                    SizedBox(height: 20),
-                    Cardobat(
-                      image: 'assets/medicine_bottle.png',
-                      name: 'Fluoxetine',
-                      shape: 'Mixture',
-                      dose: '2 times a day',
-                      detailPageRoute: '/detail-medicine',
-                    ),
-                  ],
-                ),
+                    itemCount: docs.length, // Filtered list of medicines
+                    itemBuilder: (context, index) {
+                      final doc = docs[index]; // Use filtered docs
+                      final currentUser = FirebaseAuth.instance.currentUser;
+                      final data = doc.data() as Map<String, dynamic>;
+                      data['id'] = doc.id; // Add docId to the data map
+
+                      if (currentUser != null) {
+                        data['uid'] =
+                            currentUser.uid; // Add uid to the data map
+                      } else {
+                        print('⚠️ User belum login!');
+                      }
+
+                      return Column(
+                        children: [
+                          Cardobat(medicineData: data),
+                          const SizedBox(height: 10),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ),
@@ -171,6 +272,7 @@ class _MedicinePickState extends State<MedicinePickPage> {
           });
         },
         currentIndex: selectedIndexpages,
+        uid: FirebaseAuth.instance.currentUser!.uid,
       ),
     );
   }
