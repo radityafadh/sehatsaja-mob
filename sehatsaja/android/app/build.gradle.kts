@@ -11,6 +11,7 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
 }
 
+
 android {
     namespace = "com.example.sehatsaja"
     compileSdk = flutter.compileSdkVersion.toInt()
