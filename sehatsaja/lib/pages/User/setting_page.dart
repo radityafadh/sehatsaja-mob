@@ -216,7 +216,7 @@ class _SettingPageState extends State<SettingPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'History',
+                          'Pending',
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             fontWeight: medium,

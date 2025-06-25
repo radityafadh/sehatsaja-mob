@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 import 'package:sehatsaja/shared/theme.dart';
-import 'package:sehatsaja/widgets/containerdetail.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,7 +72,6 @@ class DetailDoctorController extends GetxController {
               .where('doctorId', isEqualTo: uid)
               .get();
 
-      // Process appointments to remove duplicates
       final uniqueAppointments = _removeDuplicates(snapshot.docs);
 
       appointments.assignAll(
@@ -84,7 +82,6 @@ class DetailDoctorController extends GetxController {
         }).toList(),
       );
 
-      // Count completed/confirmed appointments
       final completedAppointments =
           appointments
               .where(
@@ -94,7 +91,6 @@ class DetailDoctorController extends GetxController {
 
       patientCount.value = completedAppointments.length;
 
-      // Calculate average rating
       final ratings =
           completedAppointments
               .where((appt) => appt['rating'] != null)
@@ -128,11 +124,9 @@ class DetailDoctorController extends GetxController {
       if (date.isNotEmpty && time.isNotEmpty) {
         final key = '$date-$time';
 
-        // Keep the latest appointment if duplicates exist
         if (!uniqueMap.containsKey(key)) {
           uniqueMap[key] = appointment;
         } else {
-          // Compare timestamps to keep the latest one
           final existingTimestamp = uniqueMap[key]!['createdAt'] as Timestamp?;
           final currentTimestamp = data['createdAt'] as Timestamp?;
 
@@ -179,13 +173,11 @@ class DetailDoctorController extends GetxController {
     final currentDate = DateFormat('yyyy-MM-dd').format(now);
 
     return dailySchedules.keys.where((date) {
-        // Filter out past dates
         final dateTime = DateTime.parse(date);
         if (dateTime.isBefore(DateTime(now.year, now.month, now.day))) {
           return false;
         }
 
-        // Check if the date has any available time slots
         final timeRanges = getAvailableTimeRanges(date);
         return timeRanges.isNotEmpty;
       }).toList()
@@ -201,7 +193,6 @@ class DetailDoctorController extends GetxController {
     final now = DateTime.now();
     final isToday = date == DateFormat('yyyy-MM-dd').format(now);
 
-    // Get all booked slots for this date
     final bookedSlots =
         appointments
             .where(
@@ -217,10 +208,8 @@ class DetailDoctorController extends GetxController {
     return (scheduleData as List)
         .whereType<String>()
         .where((timeString) {
-          // Check if time is already booked
           if (bookedSlots.contains(timeString)) return false;
 
-          // For today's date, check if time has passed
           if (isToday) {
             final timeParts = timeString.split(':');
             final slotTime = DateTime(
@@ -235,7 +224,6 @@ class DetailDoctorController extends GetxController {
           return true;
         })
         .map((timeString) {
-          // Format display as "14:20-14:50" but store original "14:20"
           final startTime = timeString;
           final start = DateTime.parse('2000-01-01 $startTime:00');
           final end = start.add(const Duration(minutes: 30));
@@ -317,45 +305,65 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: lightGreyColor,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: lightGreyColor,
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('', style: GoogleFonts.poppins(color: blackColor)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Get.back(),
         ),
+        title: Text(
+          'Doctor Details',
+          style: GoogleFonts.poppins(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        return Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
                 child: Column(
                   children: [
                     _buildProfileHeader(controller),
                     _buildStateButtons(controller),
                     _buildContentSection(controller, context),
-                    _buildBookButton(controller, context),
                   ],
                 ),
               ),
-            );
-          },
+            ),
+            _buildBookButton(controller, context),
+          ],
         );
       }),
     );
   }
 
   Widget _buildProfileHeader(DetailDoctorController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 16),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      margin: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
@@ -366,29 +374,36 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
                 final isBase64 = photoUrl.contains('base64,');
                 final imageData = isBase64 ? photoUrl.split(',')[1] : photoUrl;
 
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
+                return Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image:
+                        isBase64 && imageData.isNotEmpty
+                            ? DecorationImage(
+                              image: MemoryImage(base64Decode(imageData)),
+                              fit: BoxFit.cover,
+                            )
+                            : imageData.isNotEmpty
+                            ? DecorationImage(
+                              image: NetworkImage(imageData),
+                              fit: BoxFit.cover,
+                            )
+                            : null,
+                    color: imageData.isEmpty ? Colors.grey[200] : null,
+                  ),
                   child:
-                      isBase64 && imageData.isNotEmpty
-                          ? Image.memory(
-                            base64Decode(imageData),
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                      imageData.isEmpty
+                          ? Icon(
+                            PhosphorIconsBold.user,
+                            size: 40,
+                            color: Colors.grey[400],
                           )
-                          : imageData.isNotEmpty
-                          ? Image.network(
-                            imageData,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
-                          )
-                          : _buildDefaultAvatar(),
+                          : null,
                 );
               }),
-              const SizedBox(width: 16.0),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,8 +412,8 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
                       () => Text(
                         controller.doctorName.value,
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: bold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -406,47 +421,110 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
                     Obx(
                       () => Text(
                         controller.specialization.value,
-                        style: GoogleFonts.poppins(fontSize: 12),
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          PhosphorIconsBold.star,
+                          size: 16,
+                          color: Colors.amber,
+                        ),
+                        const SizedBox(width: 4),
+                        Obx(
+                          () => Text(
+                            '${controller.averageRating.value.toStringAsFixed(1)} (${controller.ratingCount.value})',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20.0),
+          const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Obx(
-                () => ContainerDetail(
-                  icon: PhosphorIconsBold.person,
-                  name: '${controller.patientCount.value}+',
-                  detail: 'Patients',
-                ),
+              _buildInfoItem(
+                icon: PhosphorIconsBold.user,
+                title: 'Patients',
+                value: '${controller.patientCount.value}+',
               ),
-              Obx(
-                () => ContainerDetail(
-                  icon: PhosphorIconsBold.star,
-                  name: controller.averageRating.value.toStringAsFixed(1),
-                  detail: 'Rating',
-                ),
-              ),
-              ContainerDetail(
+              _buildInfoItem(
                 icon: PhosphorIconsBold.identificationCard,
-                name: 'License',
-                detail: 'Verified',
+                title: 'License',
+                value: controller.licenseNumber.value,
+              ),
+              _buildInfoItem(
+                icon: PhosphorIconsBold.currencyDollar,
+                title: 'Price',
+                value:
+                    'Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}',
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Obx(
-            () => Text(
-              "Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}",
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: bold,
-                color: primaryColor,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: primaryColor),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStateButtons(DetailDoctorController controller) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Obx(
+              () => _buildStateButton(
+                'Schedule',
+                controller.currentState == 'Schedule',
+                () => controller.changeState('Schedule'),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Obx(
+              () => _buildStateButton(
+                'Details',
+                controller.currentState == 'Details',
+                () => controller.changeState('Details'),
               ),
             ),
           ),
@@ -455,53 +533,25 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
     );
   }
 
-  Widget _buildDefaultAvatar() {
-    return Container(
-      width: 100,
-      height: 100,
-      color: Colors.grey[200],
-      child: Icon(PhosphorIconsBold.user, size: 40, color: Colors.grey[400]),
-    );
-  }
-
-  Widget _buildStateButtons(DetailDoctorController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children:
-            ['Schedule', 'Details'].map((state) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Obx(
-                  () => ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          controller.currentState == state
-                              ? primaryColor
-                              : whiteColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => controller.changeState(state),
-                    child: Text(
-                      state,
-                      style: GoogleFonts.poppins(
-                        color:
-                            controller.currentState == state
-                                ? whiteColor
-                                : Colors.black87,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+  Widget _buildStateButton(String text, bool isActive, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: GoogleFonts.poppins(
+              color: isActive ? Colors.white : Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -525,133 +575,63 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            elevation: 2,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        PhosphorIconsBold.fileText,
-                        size: 20,
-                        color: primaryColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Description',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Obx(
-                    () => Text(
-                      controller.description.value,
-                      style: GoogleFonts.poppins(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            'About Doctor',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 2,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: 12),
+          Text(
+            controller.description.value,
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'License Information',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        PhosphorIconsBold.identificationCard,
-                        size: 20,
-                        color: primaryColor,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  PhosphorIconsBold.identificationCard,
+                  size: 24,
+                  color: primaryColor,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'License Number',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey[600],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'License Number',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Obx(
-                    () => Text(
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
                       controller.licenseNumber.value,
-                      style: GoogleFonts.poppins(fontSize: 14),
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 2,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        PhosphorIconsBold.star,
-                        size: 20,
-                        color: primaryColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Rating Summary',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Obx(() {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Average Rating: ${controller.averageRating.value.toStringAsFixed(1)}',
-                          style: GoogleFonts.poppins(fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Based on ${controller.ratingCount.value} reviews',
-                          style: GoogleFonts.poppins(fontSize: 14),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -663,119 +643,164 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
     DetailDoctorController controller,
     BuildContext context,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            'Available Dates',
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select Date',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 60,
-          child: Obx(() {
-            final availableDates = controller.getAvailableDates();
-            if (availableDates.isEmpty) {
-              return Center(
-                child: Text(
-                  'No available dates',
-                  style: GoogleFonts.poppins(color: Colors.grey),
-                ),
-              );
-            }
-
-            return ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: availableDates.length,
-              itemBuilder: (context, index) {
-                final date = availableDates[index];
-                return Obx(
-                  () => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(
-                        DateFormat('MMM dd').format(DateTime.parse(date)),
-                        style: GoogleFonts.poppins(
-                          color:
-                              controller.selectedDate.value == date
-                                  ? whiteColor
-                                  : Colors.black87,
-                        ),
-                      ),
-                      selected: controller.selectedDate.value == date,
-                      onSelected: (selected) {
-                        if (selected) {
-                          controller.selectedDate.value = date;
-                          controller.selectedTime.value = '';
-                        }
-                      },
-                      selectedColor: primaryColor,
-                      backgroundColor: Colors.grey[200],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 50,
+            child: Obx(() {
+              final availableDates = controller.getAvailableDates();
+              if (availableDates.isEmpty) {
+                return Center(
+                  child: Text(
+                    'No available dates',
+                    style: GoogleFonts.poppins(color: Colors.grey),
                   ),
                 );
-              },
-            );
-          }),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
+              }
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: availableDates.length,
+                itemBuilder: (context, index) {
+                  final date = availableDates[index];
+                  return Obx(
+                    () => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: InkWell(
+                        onTap: () {
+                          controller.selectedDate.value = date;
+                          controller.selectedTime.value = '';
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                controller.selectedDate.value == date
+                                    ? primaryColor
+                                    : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                DateFormat('EEE').format(DateTime.parse(date)),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color:
+                                      controller.selectedDate.value == date
+                                          ? Colors.white
+                                          : Colors.grey[600],
+                                ),
+                              ),
+                              Text(
+                                DateFormat('dd').format(DateTime.parse(date)),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      controller.selectedDate.value == date
+                                          ? Colors.white
+                                          : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            }),
+          ),
+          const SizedBox(height: 24),
+          Text(
             'Available Time Slots',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Obx(() {
-          final timeRanges = controller.getAvailableTimeRanges(
-            controller.selectedDate.value,
-          );
-
-          if (timeRanges.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'No available time slots for selected date',
-                style: GoogleFonts.poppins(color: Colors.grey),
-              ),
+          const SizedBox(height: 12),
+          Obx(() {
+            final timeRanges = controller.getAvailableTimeRanges(
+              controller.selectedDate.value,
             );
-          }
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+            if (timeRanges.isEmpty) {
+              return Center(
+                child: Text(
+                  'No available time slots for selected date',
+                  style: GoogleFonts.poppins(color: Colors.grey),
+                ),
+              );
+            }
+
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children:
                   timeRanges.map((range) {
-                    return ChoiceChip(
-                      label: Text(range['display']!),
-                      selected: controller.selectedTime.value == range['start'],
-                      onSelected: (selected) {
-                        if (selected) {
+                    return Obx(
+                      () => InkWell(
+                        onTap: () {
                           controller.selectTimeRange(range['start']!);
-                        }
-                      },
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                controller.selectedTime.value == range['start']
+                                    ? primaryColor
+                                    : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color:
+                                  controller.selectedTime.value ==
+                                          range['start']
+                                      ? primaryColor
+                                      : Colors.grey[300]!,
+                            ),
+                          ),
+                          child: Text(
+                            range['display']!,
+                            style: GoogleFonts.poppins(
+                              color:
+                                  controller.selectedTime.value ==
+                                          range['start']
+                                      ? Colors.white
+                                      : Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
                     );
                   }).toList(),
-            ),
-          );
-        }),
-      ],
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -786,22 +811,32 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
     return Obx(() {
       if (controller.currentState == 'Schedule' &&
           controller.selectedTime.isNotEmpty) {
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
           child: ElevatedButton(
             onPressed: () => _showBookingDialog(controller, context),
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             child: Text(
-              "Book Now",
+              "Book Appointment",
               style: GoogleFonts.poppins(
-                fontSize: 18,
-                color: whiteColor,
+                fontSize: 16,
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -820,38 +855,41 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
-      AlertDialog(
-        title: Text(
-          'Confirm Appointment',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Doctor: ${controller.doctorName.value}',
-                  style: GoogleFonts.poppins(),
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Confirm Appointment',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Date: ${DateFormat('MMM dd, yyyy').format(DateTime.parse(controller.selectedDate.value))}',
-                  style: GoogleFonts.poppins(),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Time: ${controller.selectedTime.value} - ${DateFormat('HH:mm').format(DateTime.parse('2000-01-01 ${controller.selectedTime.value}:00').add(const Duration(minutes: 30)))}',
-                  style: GoogleFonts.poppins(),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Price: Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}',
-                  style: GoogleFonts.poppins(),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
+              ),
+              const SizedBox(height: 16),
+              _buildBookingDetailItem('Doctor', controller.doctorName.value),
+              _buildBookingDetailItem(
+                'Date',
+                DateFormat(
+                  'MMM dd, yyyy',
+                ).format(DateTime.parse(controller.selectedDate.value)),
+              ),
+              _buildBookingDetailItem(
+                'Time',
+                '${controller.selectedTime.value} - ${DateFormat('HH:mm').format(DateTime.parse('2000-01-01 ${controller.selectedTime.value}:00').add(const Duration(minutes: 30)))}',
+              ),
+              _buildBookingDetailItem(
+                'Price',
+                'Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}',
+              ),
+              const SizedBox(height: 16),
+              Form(
+                key: formKey,
+                child: TextFormField(
                   controller: complaintController,
                   decoration: InputDecoration(
                     labelText: 'Complaint/Reason',
@@ -867,64 +905,104 @@ class DetailDoctorPage extends GetView<DetailDoctorController> {
                               ? 'Please describe your complaint'
                               : null,
                 ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.poppins(color: Colors.grey),
-            ),
-          ),
-          Obx(
-            () =>
-                controller.isBooking.value
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Get.back(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
                       ),
-                      onPressed: () async {
-                        if (formKey.currentState!.validate()) {
-                          controller.isBooking.value = true;
-                          try {
-                            // Get the current user ID
-                            final userId =
-                                FirebaseAuth.instance.currentUser?.uid;
-
-                            // Book appointment
-                            final appointmentId = await controller
-                                .bookAppointment(
-                                  date: controller.selectedDate.value,
-                                  time: controller.selectedTime.value,
-                                  complaint: complaintController.text,
-                                );
-
-                            if (userId != null) {
-                              await ReminderSystem.to.manualSync(userId);
-                            }
-
-                            // Navigate to payment page
-                            Get.back(); // Close the dialog
-                            Get.to(
-                              () => DetailPaymentPage(
-                                appointmentId: appointmentId,
-                              ),
-                            );
-                          } finally {
-                            controller.isBooking.value = false;
-                          }
-                        }
-                      },
                       child: Text(
-                        'Confirm Booking',
-                        style: GoogleFonts.poppins(color: whiteColor),
+                        'Cancel',
+                        style: GoogleFonts.poppins(color: Colors.grey[700]),
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Obx(
+                      () =>
+                          controller.isBooking.value
+                              ? const Center(child: CircularProgressIndicator())
+                              : ElevatedButton(
+                                onPressed: () async {
+                                  if (formKey.currentState!.validate()) {
+                                    controller.isBooking.value = true;
+                                    try {
+                                      final appointmentId = await controller
+                                          .bookAppointment(
+                                            date: controller.selectedDate.value,
+                                            time: controller.selectedTime.value,
+                                            complaint: complaintController.text,
+                                          );
+
+                                      final userId =
+                                          FirebaseAuth
+                                              .instance
+                                              .currentUser
+                                              ?.uid;
+                                      if (userId != null) {
+                                        await ReminderSystem.to.manualSync(
+                                          userId,
+                                        );
+                                      }
+
+                                      Get.back();
+                                      Get.to(
+                                        () => DetailPaymentPage(
+                                          appointmentId: appointmentId,
+                                        ),
+                                      );
+                                    } finally {
+                                      controller.isBooking.value = false;
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Confirm',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBookingDetailItem(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            '$title: ',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+          ),
+          Text(value, style: GoogleFonts.poppins()),
         ],
       ),
     );

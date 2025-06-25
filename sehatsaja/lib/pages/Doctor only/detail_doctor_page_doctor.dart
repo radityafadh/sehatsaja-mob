@@ -34,12 +34,15 @@ class DetailDoctorPageDoctorController extends GetxController {
   final RxBool isUpdating = false.obs;
   final RxBool isManagingSlots = false.obs;
   final TextEditingController newDateController = TextEditingController();
-  final TextEditingController newTimeController = TextEditingController();
   final RxString selectedSlotDate = ''.obs;
   final RxList<String> selectedDateSlots = <String>[].obs;
   final RxInt patientCount = 0.obs;
   final RxDouble averageRating = 0.0.obs;
   final RxInt ratingCount = 0.obs;
+
+  // New time slot management variables
+  final RxString selectedStartTime = '08:00'.obs;
+  final RxString selectedEndTime = '17:00'.obs;
 
   DetailDoctorPageDoctorController({required this.uid});
 
@@ -49,37 +52,37 @@ class DetailDoctorPageDoctorController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _loadDoctorData();
-    _loadAppointments();
-    _loadPatientCount();
+    _loadDoctorData().then((_) {
+      _loadAppointments().then((_) {
+        _loadPatientCountAndRatings();
+      });
+    });
   }
 
-  Future<void> _loadPatientCount() async {
+  Future<void> _loadPatientCountAndRatings() async {
     try {
-      final confirmedSnapshot =
-          await FirebaseFirestore.instance
-              .collection('appointments')
-              .where('doctorId', isEqualTo: uid)
-              .where('status', whereIn: ['confirmed', 'completed'])
-              .get();
+      final confirmedAppointments =
+          appointments
+              .where(
+                (appt) => ['confirmed', 'completed'].contains(appt['status']),
+              )
+              .toList();
 
-      patientCount.value = confirmedSnapshot.size;
+      patientCount.value = confirmedAppointments.length;
 
-      // Calculate average rating
       final ratings =
-          confirmedSnapshot.docs
-              .where((doc) => doc['rating'] != null)
-              .map((doc) => (doc['rating'] as num).toDouble())
+          confirmedAppointments
+              .where((appt) => appt['rating'] != null)
+              .map((appt) => (appt['rating'] as num).toDouble())
               .toList();
 
       ratingCount.value = ratings.length;
-      if (ratings.isNotEmpty) {
-        averageRating.value = ratings.reduce((a, b) => a + b) / ratings.length;
-      } else {
-        averageRating.value = 0.0;
-      }
+      averageRating.value =
+          ratings.isNotEmpty
+              ? ratings.reduce((a, b) => a + b) / ratings.length
+              : 0.0;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load patient count');
+      debugPrint('Error loading patient count and ratings: $e');
       patientCount.value = 0;
       ratingCount.value = 0;
       averageRating.value = 0.0;
@@ -98,7 +101,7 @@ class DetailDoctorPageDoctorController extends GetxController {
         throw Exception('Doctor document does not exist');
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load doctor data');
+      debugPrint('Error loading doctor data: $e');
     } finally {
       isLoading.value = false;
     }
@@ -114,13 +117,13 @@ class DetailDoctorPageDoctorController extends GetxController {
 
       appointments.assignAll(
         snapshot.docs.map((doc) {
-          final data = doc.data();
+          final data = doc.data() as Map<String, dynamic>;
           data['id'] = doc.id;
           return data;
         }).toList(),
       );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load appointments');
+      debugPrint('Error loading appointments: $e');
     }
   }
 
@@ -161,9 +164,7 @@ class DetailDoctorPageDoctorController extends GetxController {
     try {
       isUpdating.value = true;
 
-      // Create update map with only changed fields
       final updateData = <String, dynamic>{};
-
       if (nameController.text != doctorName.value) {
         updateData['name'] = nameController.text;
       }
@@ -185,7 +186,6 @@ class DetailDoctorPageDoctorController extends GetxController {
         updateData['licenseNumber'] = licenseController.text;
       }
 
-      // Only update if something actually changed
       if (updateData.isNotEmpty) {
         await FirebaseFirestore.instance
             .collection('users')
@@ -193,8 +193,6 @@ class DetailDoctorPageDoctorController extends GetxController {
             .update(updateData);
         await _loadDoctorData();
         Get.snackbar('Success', 'Profile updated successfully');
-      } else {
-        Get.snackbar('Info', 'No changes detected');
       }
 
       isEditing.value = false;
@@ -237,12 +235,10 @@ class DetailDoctorPageDoctorController extends GetxController {
     }
   }
 
-  Future<void> addTimeSlot() async {
-    if (selectedSlotDate.value.isEmpty || newTimeController.text.isEmpty)
-      return;
+  Future<void> addTimeSlot(String time) async {
+    if (selectedSlotDate.value.isEmpty) return;
 
     try {
-      final time = newTimeController.text;
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'dailySchedules.${selectedSlotDate.value}': FieldValue.arrayUnion([
           time,
@@ -255,11 +251,33 @@ class DetailDoctorPageDoctorController extends GetxController {
         dailySchedules[selectedSlotDate.value].add(time);
       }
 
-      newTimeController.clear();
       loadSlotsForDate(selectedSlotDate.value);
       Get.snackbar('Success', 'Time slot added successfully');
     } catch (e) {
       Get.snackbar('Error', 'Failed to add time slot: ${e.toString()}');
+    }
+  }
+
+  Future<void> addMultipleTimeSlots(List<String> times) async {
+    if (selectedSlotDate.value.isEmpty) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'dailySchedules.${selectedSlotDate.value}': FieldValue.arrayUnion(
+          times,
+        ),
+      });
+
+      if (dailySchedules[selectedSlotDate.value] == null) {
+        dailySchedules[selectedSlotDate.value] = times;
+      } else {
+        dailySchedules[selectedSlotDate.value].addAll(times);
+      }
+
+      loadSlotsForDate(selectedSlotDate.value);
+      Get.snackbar('Success', '${times.length} time slots added successfully');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to add time slots: ${e.toString()}');
     }
   }
 
@@ -278,6 +296,22 @@ class DetailDoctorPageDoctorController extends GetxController {
       Get.snackbar('Success', 'Time slot removed successfully');
     } catch (e) {
       Get.snackbar('Error', 'Failed to remove time slot: ${e.toString()}');
+    }
+  }
+
+  Future<void> clearAllTimeSlots() async {
+    if (selectedSlotDate.value.isEmpty) return;
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'dailySchedules.${selectedSlotDate.value}': FieldValue.delete(),
+      });
+
+      dailySchedules.remove(selectedSlotDate.value);
+      selectedDateSlots.clear();
+      Get.snackbar('Success', 'All time slots cleared');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to clear time slots: ${e.toString()}');
     }
   }
 
@@ -300,8 +334,8 @@ class DetailDoctorPageDoctorController extends GetxController {
 
     final bookedSlots =
         appointments
-            .where((appt) => appt['date'] == date)
-            .map((appt) => appt['time'] as String)
+            .where((appt) => appt['appointmentDate'] == date)
+            .map((appt) => appt['appointmentTime'] as String)
             .toList();
 
     return (scheduleData as List)
@@ -309,22 +343,31 @@ class DetailDoctorPageDoctorController extends GetxController {
         .where((timeString) => !bookedSlots.contains(timeString))
         .map((timeString) {
           final startTime = timeString;
-          // Parse the time and add 30 minutes for display
-          final timeFormat = DateFormat('HH:mm');
-          final startDateTime = timeFormat.parse(startTime);
-          final endDateTime = startDateTime.add(Duration(minutes: 30));
-          final endTime = timeFormat.format(endDateTime);
-
-          return {
-            'start': startTime,
-            'end': endTime,
-            'original': timeString, // Keep original for backend
-          };
+          final endTime = _calculateEndTime(startTime);
+          return {'start': startTime, 'end': endTime, 'original': timeString};
         })
         .toList();
   }
 
-  void selectTimeRange(String range) {
+  String _calculateEndTime(String startTime) {
+    try {
+      final parts = startTime.split(':');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      final endTime = DateTime(
+        0,
+        0,
+        0,
+        hour,
+        minute,
+      ).add(const Duration(minutes: 30));
+      return '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return '${startTime.split(':')[0]}:30';
+    }
+  }
+
+  void selectTime(String range) {
     selectedTime.value = range;
   }
 }
@@ -339,18 +382,25 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
     return Scaffold(
       backgroundColor: lightGreyColor,
       appBar: AppBar(
-        backgroundColor: lightGreyColor,
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('', style: GoogleFonts.poppins(color: blackColor)),
+        title: Text(
+          'Doctor Profile',
+          style: GoogleFonts.poppins(
+            color: Colors.black,
+            fontWeight: bold,
+            fontSize: 18,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Get.back(),
         ),
         actions: [
           Obx(() {
             if (controller.isManagingSlots.value) {
               return IconButton(
-                icon: const Icon(Icons.close, color: Colors.black),
+                icon: Icon(Icons.close, color: primaryColor),
                 onPressed: () {
                   controller.isManagingSlots.value = false;
                   controller.isEditing.value = false;
@@ -358,32 +408,11 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
               );
             } else if (controller.isEditing.value) {
               return IconButton(
-                icon: const Icon(Icons.close, color: Colors.black),
+                icon: Icon(Icons.close, color: primaryColor),
                 onPressed: () => controller.isEditing.value = false,
               );
-            } else {
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.black),
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    controller.isEditing.value = true;
-                  } else if (value == 'manage_slots') {
-                    controller.isManagingSlots.value = true;
-                  }
-                },
-                itemBuilder:
-                    (BuildContext context) => [
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Text('Edit Profile'),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'manage_slots',
-                        child: Text('Manage Time Slots'),
-                      ),
-                    ],
-              );
             }
+            return Container();
           }),
         ],
       ),
@@ -396,174 +425,504 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
           return _buildManageSlotsView(controller);
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Column(
-                  children: [
-                    _buildProfileHeader(controller),
-                    _buildStateButtons(controller),
-                    _buildContentSection(controller, context),
-                  ],
-                ),
-              ),
-            );
-          },
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildProfileHeader(controller),
+              _buildActionButtons(controller),
+              _buildStateButtons(controller),
+              _buildContentSection(controller, context),
+            ],
+          ),
         );
       }),
     );
   }
 
-  Widget _buildManageSlotsView(DetailDoctorPageDoctorController controller) {
+  Widget _buildActionButtons(DetailDoctorPageDoctorController controller) {
     return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.edit, size: 18),
+              label: Text(
+                'Edit Profile',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: primaryColor.withOpacity(0.3)),
+                ),
+              ),
+              onPressed:
+                  controller.isEditing.value
+                      ? null
+                      : () => controller.isEditing.value = true,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.schedule, size: 18),
+              label: Text(
+                'Manage Slots',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => controller.isManagingSlots.value = true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManageSlotsView(DetailDoctorPageDoctorController controller) {
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Manage Available Slots',
+            'Manage Time Slots',
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: primaryColor,
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            'Add New Date',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+
+          // Date Selection Card
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.newDateController,
-                  decoration: InputDecoration(
-                    hintText: 'YYYY-MM-DD',
-                    border: OutlineInputBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select Date',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: controller.addAvailableDate,
-                child: Text('Add Date'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Available Dates',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Obx(() {
-            final dates = controller.getAvailableDates();
-            if (dates.isEmpty) {
-              return Text('No available dates', style: GoogleFonts.poppins());
-            }
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  dates.map((date) {
-                    return Chip(
-                      label: Text(date),
-                      onDeleted: () => controller.removeAvailableDate(date),
-                    );
-                  }).toList(),
-            );
-          }),
-          const SizedBox(height: 20),
-          Text(
-            'Time Slots for Selected Date',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Obx(() {
-            final dates = controller.getAvailableDates();
-            return DropdownButtonFormField<String>(
-              value:
-                  controller.selectedSlotDate.value.isEmpty && dates.isNotEmpty
-                      ? dates.first
-                      : controller.selectedSlotDate.value,
-              items:
-                  dates.map((date) {
-                    return DropdownMenuItem<String>(
-                      value: date,
-                      child: Text(date),
-                    );
-                  }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  controller.loadSlotsForDate(value);
-                }
-              },
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Select Date',
-              ),
-            );
-          }),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.newTimeController,
-                  decoration: InputDecoration(
-                    hintText: 'HH:MM (e.g., 14:00)',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: controller.newDateController,
+                          decoration: InputDecoration(
+                            hintText: 'YYYY-MM-DD',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                          ),
+                          onSubmitted: (value) {
+                            if (value.isNotEmpty) {
+                              controller.loadSlotsForDate(value);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                        onPressed: () {
+                          if (controller.newDateController.text.isNotEmpty) {
+                            controller.loadSlotsForDate(
+                              controller.newDateController.text,
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Load',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: controller.addTimeSlot,
-                child: Text('Add Slot'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Obx(() {
-            final slots = controller.selectedDateSlots;
-            if (slots.isEmpty) {
-              return Text(
-                'No time slots for selected date',
-                style: GoogleFonts.poppins(),
-              );
-            }
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  slots.map((time) {
-                    return Chip(
-                      label: Text(time),
-                      onDeleted: () => controller.removeTimeSlot(time),
+                  const SizedBox(height: 12),
+                  Obx(() {
+                    final dates = controller.getAvailableDates();
+                    if (dates.isEmpty) {
+                      return Text(
+                        'No available dates added yet',
+                        style: GoogleFonts.poppins(color: Colors.grey),
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Available Dates:',
+                          style: GoogleFonts.poppins(fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children:
+                                dates.map((date) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: Chip(
+                                      label: Text(date),
+                                      backgroundColor:
+                                          controller.selectedSlotDate.value ==
+                                                  date
+                                              ? primaryColor.withOpacity(0.2)
+                                              : Colors.grey[200],
+                                      onDeleted:
+                                          () => controller.removeAvailableDate(
+                                            date,
+                                          ),
+                                      deleteIconColor: primaryColor,
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                        ),
+                      ],
                     );
-                  }).toList(),
-            );
-          }),
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Quick Add Time Slots Card
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Add Time Slots',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Select a time range to automatically generate 30-minute slots:',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Time Range Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Start Time',
+                              style: GoogleFonts.poppins(fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            Obx(
+                              () => DropdownButtonFormField<String>(
+                                items: List.generate(24, (index) {
+                                  final hour = index.toString().padLeft(2, '0');
+                                  return DropdownMenuItem(
+                                    value: '$hour:00',
+                                    child: Text('$hour:00'),
+                                  );
+                                }),
+                                onChanged: (value) {
+                                  controller.selectedStartTime.value =
+                                      value ?? '08:00';
+                                },
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                value: controller.selectedStartTime.value,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'End Time',
+                              style: GoogleFonts.poppins(fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            Obx(
+                              () => DropdownButtonFormField<String>(
+                                items: List.generate(24, (index) {
+                                  final hour = (index + 1).toString().padLeft(
+                                    2,
+                                    '0',
+                                  );
+                                  return DropdownMenuItem(
+                                    value: '$hour:00',
+                                    child: Text('$hour:00'),
+                                  );
+                                }),
+                                onChanged: (value) {
+                                  controller.selectedEndTime.value =
+                                      value ?? '17:00';
+                                },
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                value: controller.selectedEndTime.value,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Generate Slots Button
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () {
+                      if (controller.selectedSlotDate.value.isEmpty) {
+                        Get.snackbar('Error', 'Please select a date first');
+                        return;
+                      }
+
+                      final startParts = controller.selectedStartTime.value
+                          .split(':');
+                      final endParts = controller.selectedEndTime.value.split(
+                        ':',
+                      );
+
+                      final startHour = int.parse(startParts[0]);
+                      final startMinute = int.parse(startParts[1]);
+                      final endHour = int.parse(endParts[0]);
+                      final endMinute = int.parse(endParts[1]);
+
+                      final startTime = DateTime(
+                        0,
+                        0,
+                        0,
+                        startHour,
+                        startMinute,
+                      );
+                      final endTime = DateTime(0, 0, 0, endHour, endMinute);
+
+                      if (endTime.isBefore(startTime)) {
+                        Get.snackbar(
+                          'Error',
+                          'End time must be after start time',
+                        );
+                        return;
+                      }
+
+                      final newSlots = <String>[];
+                      var currentTime = startTime;
+
+                      while (currentTime.isBefore(endTime)) {
+                        final timeStr =
+                            '${currentTime.hour.toString().padLeft(2, '0')}:${currentTime.minute.toString().padLeft(2, '0')}';
+                        newSlots.add(timeStr);
+                        currentTime = currentTime.add(
+                          const Duration(minutes: 30),
+                        );
+                      }
+
+                      if (newSlots.isNotEmpty) {
+                        controller.addMultipleTimeSlots(newSlots);
+                      }
+                    },
+                    child: Text(
+                      'Generate Time Slots',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Current Time Slots Card
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    controller.selectedSlotDate.value.isNotEmpty
+                        ? 'Time Slots for ${DateFormat('MMM dd, yyyy').format(DateTime.parse(controller.selectedSlotDate.value))}'
+                        : 'Time Slots',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Obx(() {
+                    final slots = controller.selectedDateSlots;
+                    if (slots.isEmpty) {
+                      return Text(
+                        'No time slots for selected date',
+                        style: GoogleFonts.poppins(color: Colors.grey),
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              slots.map((time) {
+                                return Chip(
+                                  label: Text(time),
+                                  backgroundColor: Colors.blue[50],
+                                  labelStyle: GoogleFonts.poppins(
+                                    color: primaryColor,
+                                  ),
+                                  deleteIconColor: primaryColor,
+                                  onDeleted:
+                                      () => controller.removeTimeSlot(time),
+                                );
+                              }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[50],
+                            foregroundColor: Colors.red,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            if (controller.selectedSlotDate.value.isEmpty)
+                              return;
+                            Get.defaultDialog(
+                              title: 'Clear All Slots',
+                              middleText:
+                                  'Are you sure you want to remove all time slots for this date?',
+                              textConfirm: 'Yes',
+                              textCancel: 'No',
+                              confirmTextColor: Colors.white,
+                              onConfirm: () {
+                                controller.clearAllTimeSlots();
+                                Get.back();
+                              },
+                            );
+                          },
+                          child: Text(
+                            'Clear All Slots',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildProfileHeader(DetailDoctorPageDoctorController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 16),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Row(
@@ -574,26 +933,32 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                 final isBase64 = photoUrl.contains('base64,');
                 final imageData = isBase64 ? photoUrl.split(',')[1] : photoUrl;
 
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child:
-                      isBase64 && imageData.isNotEmpty
-                          ? Image.memory(
-                            base64Decode(imageData),
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
-                          )
-                          : imageData.isNotEmpty
-                          ? Image.network(
-                            imageData,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
-                          )
-                          : _buildDefaultAvatar(),
+                return Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[200],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child:
+                        isBase64 && imageData.isNotEmpty
+                            ? Image.memory(
+                              base64Decode(imageData),
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (_, __, ___) => _buildDefaultAvatar(),
+                            )
+                            : imageData.isNotEmpty
+                            ? Image.network(
+                              imageData,
+                              fit: BoxFit.cover,
+                              errorBuilder:
+                                  (_, __, ___) => _buildDefaultAvatar(),
+                            )
+                            : _buildDefaultAvatar(),
+                  ),
                 );
               }),
               const SizedBox(width: 16.0),
@@ -606,18 +971,30 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                           controller.isEditing.value
                               ? TextFormField(
                                 controller: controller.nameController,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 decoration: InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[300]!,
+                                    ),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
                                 ),
                               )
                               : Text(
                                 controller.doctorName.value,
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
-                                  fontWeight: bold,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                     ),
@@ -627,16 +1004,28 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                           controller.isEditing.value
                               ? TextFormField(
                                 controller: controller.specializationController,
+                                style: GoogleFonts.poppins(fontSize: 12),
                                 decoration: InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 8,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey[300]!,
+                                    ),
                                   ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.grey[50],
                                 ),
                               )
                               : Text(
                                 controller.specialization.value,
-                                style: GoogleFonts.poppins(fontSize: 12),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
                               ),
                     ),
                   ],
@@ -648,19 +1037,15 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Obx(
-                () => ContainerDetail(
-                  icon: PhosphorIconsBold.person,
-                  name: '${controller.patientCount.value}+',
-                  detail: 'Patients',
-                ),
+              ContainerDetail(
+                icon: PhosphorIconsBold.person,
+                name: '${controller.patientCount.value}+',
+                detail: 'Patients',
               ),
-              Obx(
-                () => ContainerDetail(
-                  icon: PhosphorIconsBold.star,
-                  name: controller.averageRating.value.toStringAsFixed(1),
-                  detail: 'Rating',
-                ),
+              ContainerDetail(
+                icon: PhosphorIconsBold.star,
+                name: controller.averageRating.value.toStringAsFixed(1),
+                detail: 'Rating',
               ),
               if (controller.hasLicense)
                 ContainerDetail(
@@ -677,17 +1062,34 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                     ? TextFormField(
                       controller: controller.priceController,
                       keyboardType: TextInputType.number,
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
                       decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey[50],
                         prefixText: 'Rp ',
+                        prefixStyle: GoogleFonts.poppins(
+                          color: primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     )
                     : Text(
                       "Rp ${NumberFormat('#,###').format(controller.doctorPrice.value)}",
                       style: GoogleFonts.poppins(
                         fontSize: 18,
-                        fontWeight: bold,
+                        fontWeight: FontWeight.bold,
                         color: primaryColor,
                       ),
                     ),
@@ -695,12 +1097,25 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
           if (controller.isEditing.value) ...[
             const SizedBox(height: 16),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                minimumSize: const Size(double.infinity, 48),
+              ),
               onPressed: controller.updateDoctorProfile,
               child: Obx(
                 () =>
                     controller.isUpdating.value
-                        ? CircularProgressIndicator(color: whiteColor)
-                        : Text('Save Changes'),
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                          'Save Changes',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
               ),
             ),
           ],
@@ -710,37 +1125,42 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
   }
 
   Widget _buildDefaultAvatar() {
-    return Container(
-      width: 100,
-      height: 100,
-      color: Colors.grey[200],
+    return Center(
       child: Icon(PhosphorIconsBold.user, size: 40, color: Colors.grey[400]),
     );
   }
 
   Widget _buildStateButtons(DetailDoctorPageDoctorController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children:
-            ['Schedule', 'Details'].map((state) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Obx(
-                  () => ElevatedButton(
-                    style: ElevatedButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children:
+              ['Schedule', 'Details'].map((state) {
+                return Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       backgroundColor:
                           controller.currentState == state
-                              ? primaryColor
-                              : whiteColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                              ? primaryColor.withOpacity(0.1)
+                              : Colors.transparent,
                     ),
                     onPressed: () => controller.changeState(state),
                     child: Text(
@@ -748,14 +1168,15 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                       style: GoogleFonts.poppins(
                         color:
                             controller.currentState == state
-                                ? whiteColor
-                                : Colors.black87,
+                                ? primaryColor
+                                : Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+        ),
       ),
     );
   }
@@ -783,7 +1204,7 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
             elevation: 2,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -803,25 +1224,37 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: primaryColor,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Obx(
                     () =>
                         controller.isEditing.value
                             ? TextFormField(
                               controller: controller.descriptionController,
                               maxLines: 3,
+                              style: GoogleFonts.poppins(fontSize: 14),
                               decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.all(8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey[300]!,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.all(12),
+                                filled: true,
+                                fillColor: Colors.grey[50],
                               ),
                             )
                             : Text(
                               controller.description.value,
-                              style: GoogleFonts.poppins(fontSize: 14),
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                              ),
                             ),
                   ),
                 ],
@@ -833,7 +1266,7 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
             elevation: 2,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -853,19 +1286,28 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: primaryColor,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Obx(
                     () =>
                         controller.isEditing.value
                             ? TextFormField(
                               controller: controller.licenseController,
+                              style: GoogleFonts.poppins(fontSize: 14),
                               decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.all(8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey[300]!,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.all(12),
+                                filled: true,
+                                fillColor: Colors.grey[50],
                                 hintText: 'Enter license number',
                               ),
                             )
@@ -873,7 +1315,10 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                               controller.licenseNumber.value.isNotEmpty
                                   ? controller.licenseNumber.value
                                   : 'No license number',
-                              style: GoogleFonts.poppins(fontSize: 14),
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                              ),
                             ),
                   ),
                 ],
@@ -885,7 +1330,7 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
             elevation: 2,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -905,23 +1350,30 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: primaryColor,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Obx(() {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Average Rating: ${controller.averageRating.value.toStringAsFixed(1)}',
-                          style: GoogleFonts.poppins(fontSize: 14),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Based on ${controller.ratingCount.value} reviews',
-                          style: GoogleFonts.poppins(fontSize: 14),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       ],
                     );
@@ -939,63 +1391,145 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
     DetailDoctorPageDoctorController controller,
     BuildContext context,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
             'Available Dates',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+              color: blackColor,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 60,
-          child: Obx(() {
-            final availableDates = controller.getAvailableDates();
-            if (availableDates.isEmpty) {
-              return Center(
-                child: Text(
-                  'No available dates',
-                  style: GoogleFonts.poppins(color: Colors.grey),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 60,
+            child: Obx(() {
+              final availableDates = controller.getAvailableDates();
+              if (availableDates.isEmpty) {
+                return Center(
+                  child: Text(
+                    'No available dates',
+                    style: GoogleFonts.poppins(color: Colors.grey),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: availableDates.length,
+                itemBuilder: (context, index) {
+                  final date = availableDates[index];
+                  return Obx(
+                    () => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(
+                          DateFormat('MMM dd').format(DateTime.parse(date)),
+                          style: GoogleFonts.poppins(
+                            color:
+                                controller.selectedDate.value == date
+                                    ? Colors.white
+                                    : primaryColor,
+                          ),
+                        ),
+                        selected: controller.selectedDate.value == date,
+                        onSelected: (selected) {
+                          if (selected) {
+                            controller.selectedDate.value = date;
+                            controller.selectedTime.value = '';
+                          }
+                        },
+                        selectedColor: primaryColor,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: primaryColor.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            }),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Available Time Slots',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: blackColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Obx(() {
+            final timeRanges = controller.getAvailableTimeRanges(
+              controller.selectedDate.value,
+            );
+
+            if (timeRanges.isEmpty) {
+              return Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'No available time slots for selected date',
+                    style: GoogleFonts.poppins(color: Colors.grey),
+                  ),
                 ),
               );
             }
 
-            return ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: availableDates.length,
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: timeRanges.length,
               itemBuilder: (context, index) {
-                final date = availableDates[index];
+                final range = timeRanges[index];
+                final displayRange = '${range['start']} - ${range['end']}';
                 return Obx(
-                  () => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: ChoiceChip(
-                      label: Text(
-                        DateFormat('MMM dd').format(DateTime.parse(date)),
-                        style: GoogleFonts.poppins(
-                          color:
-                              controller.selectedDate.value == date
-                                  ? whiteColor
-                                  : Colors.black87,
-                        ),
-                      ),
-                      selected: controller.selectedDate.value == date,
-                      onSelected: (selected) {
-                        if (selected) {
-                          controller.selectedDate.value = date;
-                          controller.selectedTime.value = '';
-                        }
+                  () => Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    color:
+                        controller.selectedTime.value == displayRange
+                            ? primaryColor.withOpacity(0.1)
+                            : Colors.white,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        controller.selectTime(displayRange);
                       },
-                      selectedColor: primaryColor,
-                      backgroundColor: Colors.grey[200],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      child: Center(
+                        child: Text(
+                          displayRange,
+                          style: GoogleFonts.poppins(
+                            color:
+                                controller.selectedTime.value == displayRange
+                                    ? primaryColor
+                                    : Colors.grey[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1003,57 +1537,8 @@ class DetailDoctorPageDoctor extends GetView<DetailDoctorPageDoctorController> {
               },
             );
           }),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            'Available Time Slots',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Obx(() {
-          final timeRanges = controller.getAvailableTimeRanges(
-            controller.selectedDate.value,
-          );
-
-          if (timeRanges.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'No available time slots for selected date',
-                style: GoogleFonts.poppins(color: Colors.grey),
-              ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children:
-                  timeRanges.map((range) {
-                    // Display as "14:20 - 14:50" but store original "14:20" for backend
-                    final displayRange = '${range['start']} - ${range['end']}';
-                    return ChoiceChip(
-                      label: Text(displayRange),
-                      selected: controller.selectedTime.value == displayRange,
-                      onSelected: (selected) {
-                        if (selected) {
-                          controller.selectTimeRange(displayRange);
-                        }
-                      },
-                    );
-                  }).toList(),
-            ),
-          );
-        }),
-      ],
+        ],
+      ),
     );
   }
 }
